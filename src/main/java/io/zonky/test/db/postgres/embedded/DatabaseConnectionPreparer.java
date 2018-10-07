@@ -11,22 +11,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.opentable.db.postgres.embedded;
+package io.zonky.test.db.postgres.embedded;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
-/**
- * A DatabasePreparer applies an arbitrary set of changes
- * (e.g. database migrations, user creation) to a database
- * before it is presented to the user.
- *
- * The preparation steps are expected to be deterministic.
- * For efficiency reasons, databases created by DatabasePreparer
- * instances may be pooled, using {@link Object#hashCode()} and
- * {@link Object#equals(Object)} to determine equivalence.
- */
-public interface DatabasePreparer {
-    void prepare(DataSource ds) throws SQLException;
+public interface DatabaseConnectionPreparer extends DatabasePreparer {
+
+    @Override
+    default void prepare(DataSource ds) throws SQLException {
+        try (Connection c = ds.getConnection()) {
+            prepare(c);
+        }
+    }
+
+    void prepare(Connection conn) throws SQLException;
 }

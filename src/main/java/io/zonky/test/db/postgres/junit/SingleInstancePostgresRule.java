@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.opentable.db.postgres.junit;
+package io.zonky.test.db.postgres.junit;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -20,9 +20,8 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import org.junit.rules.ExternalResource;
-
-import com.opentable.db.postgres.embedded.EmbeddedPostgres;
 
 public class SingleInstancePostgresRule extends ExternalResource
 {

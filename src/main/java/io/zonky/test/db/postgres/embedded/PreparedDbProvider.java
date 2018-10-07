@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.opentable.db.postgres.embedded;
+package io.zonky.test.db.postgres.embedded;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -28,10 +28,9 @@ import java.util.function.Consumer;
 
 import javax.sql.DataSource;
 
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres.Builder;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.postgresql.ds.PGSimpleDataSource;
-
-import com.opentable.db.postgres.embedded.EmbeddedPostgres.Builder;
 
 public class PreparedDbProvider
 {
@@ -52,7 +51,7 @@ public class PreparedDbProvider
         return forPreparer(preparer, Collections.emptyList());
     }
 
-    public static PreparedDbProvider forPreparer(DatabasePreparer preparer, Iterable<Consumer<EmbeddedPostgres.Builder>> customizers) {
+    public static PreparedDbProvider forPreparer(DatabasePreparer preparer, Iterable<Consumer<Builder>> customizers) {
         return new PreparedDbProvider(preparer, customizers);
     }
 
@@ -253,7 +252,7 @@ public class PreparedDbProvider
             this.dbName = dbName;
             this.port = port;
             this.user = user;
-            this.ex = null;
+            this.ex = e;
         }
 
         public int getPort() {

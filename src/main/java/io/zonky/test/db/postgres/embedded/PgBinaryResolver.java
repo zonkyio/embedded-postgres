@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package com.opentable.db.postgres.embedded;
+package io.zonky.test.db.postgres.embedded;
 
 import java.io.IOException;
 import java.io.InputStream;

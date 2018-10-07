@@ -11,28 +11,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.opentable.db.postgres.embedded;
 
-public class ConnectionInfo {
-    private final String dbName;
-    private final int port;
-    private final String user;
+package io.zonky.test.db.postgres.embedded;
 
-    public ConnectionInfo(final String dbName, final int port, final String user) {
-        this.dbName = dbName;
-        this.port = port;
-        this.user = user;
+import static java.lang.String.format;
+
+import java.io.InputStream;
+
+/**
+ * Resolves pre-bundled binaries from within the JAR file.
+ */
+final class BundledPostgresBinaryResolver implements PgBinaryResolver {
+
+    @Override
+    public InputStream getPgBinary(String system, String machineHardware) {
+        return EmbeddedPostgres.class.getResourceAsStream(format("/postgresql-%s-%s.txz", system, machineHardware));
     }
 
-    public String getUser() {
-        return user;
-    }
-
-    public String getDbName() {
-        return dbName;
-    }
-
-    public int getPort() {
-        return port;
-    }
 }

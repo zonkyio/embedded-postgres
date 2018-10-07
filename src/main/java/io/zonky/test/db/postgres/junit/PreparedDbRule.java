@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.opentable.db.postgres.junit;
+package io.zonky.test.db.postgres.junit;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -19,12 +19,11 @@ import java.util.function.Consumer;
 
 import javax.sql.DataSource;
 
+import io.zonky.test.db.postgres.embedded.ConnectionInfo;
+import io.zonky.test.db.postgres.embedded.DatabasePreparer;
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
+import io.zonky.test.db.postgres.embedded.PreparedDbProvider;
 import org.junit.rules.ExternalResource;
-
-import com.opentable.db.postgres.embedded.ConnectionInfo;
-import com.opentable.db.postgres.embedded.DatabasePreparer;
-import com.opentable.db.postgres.embedded.EmbeddedPostgres;
-import com.opentable.db.postgres.embedded.PreparedDbProvider;
 
 public class PreparedDbRule extends ExternalResource {
 
