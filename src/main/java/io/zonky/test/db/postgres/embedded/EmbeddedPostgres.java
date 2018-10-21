@@ -252,7 +252,7 @@ public class EmbeddedPostgres implements Closeable
         final Process postmaster = builder.start();
 
         if (outputRedirector.type() == ProcessBuilder.Redirect.Type.PIPE) {
-            ProcessOutputLogger.logOutput(LOG, postmaster);
+            ProcessOutputLogger.logOutput(LOG, postmaster, "pg_ctl");
         }
 
         LOG.info("{} postmaster started as {} on port {}.  Waiting up to {} for server startup to finish.", instanceId, postmaster.toString(), port, pgStartupWait);
@@ -573,19 +573,21 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private static List<String> system(String... command)
+    private void system(String... command)
     {
         try {
             final ProcessBuilder builder = new ProcessBuilder(command);
-            builder.redirectError(ProcessBuilder.Redirect.PIPE);
-            builder.redirectOutput(ProcessBuilder.Redirect.PIPE);
             builder.redirectErrorStream(true);
+            builder.redirectError(errorRedirector);
+            builder.redirectOutput(outputRedirector);
             final Process process = builder.start();
+
+            if (outputRedirector.type() == ProcessBuilder.Redirect.Type.PIPE) {
+                String processName = command[0].replaceAll("^.*[\\\\/](\\w+)(\\.exe)?$", "$1");
+                ProcessOutputLogger.logOutput(LOG, process, processName);
+            }
             if (0 != process.waitFor()) {
                 throw new IllegalStateException(String.format("Process %s failed%n%s", Arrays.asList(command), IOUtils.toString(process.getErrorStream())));
-            }
-            try (InputStream stream = process.getInputStream()) {
-                return IOUtils.readLines(stream);
             }
         } catch (final RuntimeException e) { // NOPMD
             throw e;
