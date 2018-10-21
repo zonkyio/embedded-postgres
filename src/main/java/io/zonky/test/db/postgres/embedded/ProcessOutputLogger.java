@@ -13,12 +13,14 @@
  */
 package io.zonky.test.db.postgres.embedded;
 
+import org.slf4j.Logger;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
-import org.slf4j.Logger;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 
 /**
  * Read standard output of process and write lines to given {@link Logger} as INFO;
@@ -61,9 +63,10 @@ final class ProcessOutputLogger implements Runnable {
         }
     }
 
-    static void logOutput(final Logger logger, final Process process) {
+    static void logOutput(final Logger logger, final Process process, final String processName) {
+        final String threadName = isNotBlank(processName) ? processName + "@" + process.hashCode() : process.toString();
         final Thread t = new Thread(new ProcessOutputLogger(logger, process));
-        t.setName("output redirector for " + process);
+        t.setName(threadName);
         t.start();
     }
 }

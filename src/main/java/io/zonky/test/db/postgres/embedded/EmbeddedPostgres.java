@@ -252,7 +252,7 @@ public class EmbeddedPostgres implements Closeable
         final Process postmaster = builder.start();
 
         if (outputRedirector.type() == ProcessBuilder.Redirect.Type.PIPE) {
-            ProcessOutputLogger.logOutput(LOG, postmaster);
+            ProcessOutputLogger.logOutput(LOG, postmaster, "pg_ctl");
         }
 
         LOG.info("{} postmaster started as {} on port {}.  Waiting up to {} for server startup to finish.", instanceId, postmaster.toString(), port, pgStartupWait);
@@ -583,7 +583,8 @@ public class EmbeddedPostgres implements Closeable
             final Process process = builder.start();
 
             if (outputRedirector.type() == ProcessBuilder.Redirect.Type.PIPE) {
-                ProcessOutputLogger.logOutput(LOG, process);
+                String processName = command[0].replaceAll("^.*[\\\\/](\\w+)(\\.exe)?$", "$1");
+                ProcessOutputLogger.logOutput(LOG, process, processName);
             }
             if (0 != process.waitFor()) {
                 throw new IllegalStateException(String.format("Process %s failed%n%s", Arrays.asList(command), IOUtils.toString(process.getErrorStream())));
