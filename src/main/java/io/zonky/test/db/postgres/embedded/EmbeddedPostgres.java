@@ -45,7 +45,6 @@ import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +75,7 @@ import org.tukaani.xz.XZInputStream;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
+import static java.util.Collections.unmodifiableMap;
 
 @SuppressWarnings("PMD.AvoidDuplicateLiterals") // "postgres"
 public class EmbeddedPostgres implements Closeable
@@ -100,6 +100,7 @@ public class EmbeddedPostgres implements Closeable
 
     private final Map<String, String> postgresConfig;
     private final Map<String, String> localeConfig;
+    private final Map<String, String> connectConfig;
 
     private volatile FileOutputStream lockStream;
     private volatile FileLock lock;
@@ -122,6 +123,7 @@ public class EmbeddedPostgres implements Closeable
         this.cleanDataDirectory = cleanDataDirectory;
         this.postgresConfig = new HashMap<>(postgresConfig);
         this.localeConfig = new HashMap<>(localeConfig);
+        this.connectConfig = new HashMap<>(connectConfig);
         this.port = port;
         this.pgDir = prepareBinaries(pgBinaryResolver);
         this.errorRedirector = errorRedirector;
@@ -153,7 +155,7 @@ public class EmbeddedPostgres implements Closeable
         }
 
         lock();
-        startPostmaster(connectConfig);
+        startPostmaster();
     }
 
     public DataSource getTemplateDatabase()
@@ -176,7 +178,7 @@ public class EmbeddedPostgres implements Closeable
     }
 
     public DataSource getDatabase(String userName, String dbName) {
-        return getDatabase(userName, dbName, Collections.emptyMap());
+        return getDatabase(userName, dbName, connectConfig);
     }
 
     public DataSource getDatabase(String userName, String dbName, Map<String, String> properties)
@@ -207,6 +209,11 @@ public class EmbeddedPostgres implements Closeable
         return port;
     }
 
+    Map<String, String> getConnectConfig()
+    {
+        return unmodifiableMap(connectConfig);
+    }
+
     private static int detectPort() throws IOException
     {
         try (ServerSocket socket = new ServerSocket(0)) {
@@ -235,7 +242,7 @@ public class EmbeddedPostgres implements Closeable
         LOG.info("{} initdb completed in {}", instanceId, watch);
     }
 
-    private void startPostmaster(Map<String, String> connectConfig) throws IOException
+    private void startPostmaster() throws IOException
     {
         final StopWatch watch = new StopWatch();
         watch.start();
@@ -266,7 +273,7 @@ public class EmbeddedPostgres implements Closeable
 
         Runtime.getRuntime().addShutdownHook(newCloserThread());
 
-        waitForServerStartup(watch, connectConfig);
+        waitForServerStartup(watch);
     }
 
     private List<String> createInitOptions()
@@ -294,14 +301,14 @@ public class EmbeddedPostgres implements Closeable
         return localeOptions;
     }
 
-    private void waitForServerStartup(StopWatch watch, Map<String, String> connectConfig) throws IOException
+    private void waitForServerStartup(StopWatch watch) throws IOException
     {
         Throwable lastCause = null;
         final long start = System.nanoTime();
         final long maxWaitNs = TimeUnit.NANOSECONDS.convert(pgStartupWait.toMillis(), TimeUnit.MILLISECONDS);
         while (System.nanoTime() - start < maxWaitNs) {
             try {
-                verifyReady(connectConfig);
+                verifyReady();
                 LOG.info("{} postmaster startup finished in {}", instanceId, watch);
                 return;
             } catch (final SQLException e) {
@@ -319,7 +326,7 @@ public class EmbeddedPostgres implements Closeable
         throw new IOException("Gave up waiting for server to start after " + pgStartupWait.toMillis() + "ms", lastCause);
     }
 
-    private void verifyReady(Map<String, String> connectConfig) throws SQLException
+    private void verifyReady() throws SQLException
     {
         final InetAddress localhost;
         try {
@@ -344,7 +351,7 @@ public class EmbeddedPostgres implements Closeable
                 LOG.trace("i/o exception closing test socket", e);
             }
         }
-        try (Connection c = getPostgresDatabase(connectConfig).getConnection() ;
+        try (Connection c = getPostgresDatabase().getConnection() ;
                 Statement s = c.createStatement() ;
                 ResultSet rs = s.executeQuery("SELECT 1"))
         {

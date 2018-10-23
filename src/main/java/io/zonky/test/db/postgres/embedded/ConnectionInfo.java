@@ -13,15 +13,28 @@
  */
 package io.zonky.test.db.postgres.embedded;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.unmodifiableMap;
+
 public class ConnectionInfo {
+
     private final String dbName;
     private final int port;
     private final String user;
+    private final Map<String, String> properties;
 
     public ConnectionInfo(final String dbName, final int port, final String user) {
+        this(dbName, port, user, emptyMap());
+    }
+
+    public ConnectionInfo(final String dbName, final int port, final String user, final Map<String, String> properties) {
         this.dbName = dbName;
         this.port = port;
         this.user = user;
+        this.properties = new HashMap<>(properties);
     }
 
     public String getUser() {
@@ -34,5 +47,9 @@ public class ConnectionInfo {
 
     public int getPort() {
         return port;
+    }
+
+    public Map<String, String> getProperties() {
+        return unmodifiableMap(properties);
     }
 }

@@ -13,6 +13,11 @@
  */
 package io.zonky.test.db.postgres.embedded;
 
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres.Builder;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.postgresql.ds.PGSimpleDataSource;
+
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -21,17 +26,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.function.Consumer;
 
-import javax.sql.DataSource;
-
-import io.zonky.test.db.postgres.embedded.EmbeddedPostgres.Builder;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.postgresql.ds.PGSimpleDataSource;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.unmodifiableMap;
 
 public class PreparedDbProvider
 {
@@ -108,7 +112,7 @@ public class PreparedDbProvider
     public ConnectionInfo createNewDatabase() throws SQLException
     {
         final DbInfo dbInfo = createNewDB();
-        return dbInfo == null || !dbInfo.isSuccess() ? null : new ConnectionInfo(dbInfo.getDbName(), dbInfo.getPort(), dbInfo.getUser());
+        return dbInfo == null || !dbInfo.isSuccess() ? null : new ConnectionInfo(dbInfo.getDbName(), dbInfo.getPort(), dbInfo.getUser(), dbInfo.getProperties());
     }
 
     /**
@@ -121,6 +125,12 @@ public class PreparedDbProvider
         ds.setPortNumber(connectionInfo.getPort());
         ds.setDatabaseName(connectionInfo.getDbName());
         ds.setUser(connectionInfo.getUser());
+
+        Set<Entry<String, String>> properties = connectionInfo.getProperties().entrySet();
+        for (Entry<String, String> property : properties) {
+            ds.setProperty(property.getKey(), property.getValue());
+        }
+
         return ds;
     }
 
@@ -204,7 +214,7 @@ public class PreparedDbProvider
                 }
                 try {
                     if (failure == null) {
-                        nextDatabase.put(DbInfo.ok(newDbName, pg.getPort(), "postgres"));
+                        nextDatabase.put(DbInfo.ok(newDbName, pg.getPort(), "postgres", pg.getConnectConfig()));
                     } else {
                         nextDatabase.put(DbInfo.error(failure));
                     }
@@ -264,22 +274,28 @@ public class PreparedDbProvider
     public static class DbInfo
     {
         public static DbInfo ok(final String dbName, final int port, final String user) {
-            return new DbInfo(dbName, port, user, null);
+            return ok(dbName, port, user, emptyMap());
+        }
+
+        private static DbInfo ok(final String dbName, final int port, final String user, final Map<String, String> properties) {
+            return new DbInfo(dbName, port, user, properties, null);
         }
 
         public static DbInfo error(SQLException e) {
-            return new DbInfo(null, -1, null, e);
+            return new DbInfo(null, -1, null, emptyMap(), e);
         }
 
         private final String dbName;
         private final int port;
         private final String user;
+        private final Map<String, String> properties;
         private final SQLException ex;
 
-        private DbInfo(final String dbName, final int port, final String user, final SQLException e) {
+        private DbInfo(final String dbName, final int port, final String user, final Map<String, String> properties, final SQLException e) {
             this.dbName = dbName;
             this.port = port;
             this.user = user;
+            this.properties = properties;
             this.ex = e;
         }
 
@@ -293,6 +309,10 @@ public class PreparedDbProvider
 
         public String getUser() {
             return user;
+        }
+
+        public Map<String, String> getProperties() {
+            return unmodifiableMap(properties);
         }
 
         public SQLException getException() {
