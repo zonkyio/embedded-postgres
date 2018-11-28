@@ -39,7 +39,7 @@ import static java.util.Collections.unmodifiableMap;
 
 public class PreparedDbProvider
 {
-    private static final String JDBC_FORMAT = "jdbc:postgresql://localhost:%d/%s";
+    private static final String JDBC_FORMAT = "jdbc:postgresql://localhost:%d/%s?user=%s";
 
     /**
      * Each database cluster's <code>template1</code> database has a unique set of schema
@@ -145,7 +145,7 @@ public class PreparedDbProvider
 
     String getJdbcUri(DbInfo db)
     {
-        return String.format(JDBC_FORMAT, db.port, db.dbName);
+        return String.format(JDBC_FORMAT, db.port, db.dbName, db.user);
     }
 
     /**
