@@ -18,7 +18,7 @@
 
     <groupId>io.zonky.test</groupId>
     <artifactId>embedded-postgres</artifactId>
-    <version>1.1.1-SNAPSHOT</version>
+    <version>1.2.0</version>
 
     <name>embedded-postgres</name>
     <description>Embedded PostgreSQL Server</description>
@@ -39,7 +39,7 @@
         <connection>scm:git:https://github.com/zonkyio/embedded-postgres.git</connection>
         <developerConnection>scm:git:https://github.com/zonkyio/embedded-postgres.git</developerConnection>
         <url>https://github.com/zonkyio/embedded-postgres</url>
-        <tag>HEAD</tag>
+        <tag>v1.2.0</tag>
     </scm>
 
     <licenses>
