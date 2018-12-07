@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.SynchronousQueue;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.unmodifiableMap;
@@ -143,9 +144,12 @@ public class PreparedDbProvider
         return createDataSourceFromConnectionInfo(createNewDatabase());
     }
 
-    String getJdbcUri(DbInfo db)
+    private String getJdbcUri(DbInfo db)
     {
-        return String.format(JDBC_FORMAT, db.port, db.dbName, db.user);
+        String additionalParameters = db.getProperties().entrySet().stream()
+                .map(e -> String.format("&%s=%s", e.getKey(), e.getValue()))
+                .collect(Collectors.joining());
+        return String.format(JDBC_FORMAT, db.port, db.dbName, db.user) + additionalParameters;
     }
 
     /**
