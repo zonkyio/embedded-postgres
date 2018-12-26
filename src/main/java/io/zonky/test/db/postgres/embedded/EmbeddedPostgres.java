@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
@@ -111,19 +112,22 @@ public class EmbeddedPostgres implements Closeable
         Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
         PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector) throws IOException
     {
-        this(parentDirectory, dataDirectory, cleanDataDirectory, postgresConfig, localeConfig, port, connectConfig, pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT);
+        this(parentDirectory, dataDirectory, cleanDataDirectory, postgresConfig, localeConfig, port, connectConfig,
+                pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT, null);
     }
 
     EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
                      Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
-                     PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector, Duration pgStartupWait) throws IOException
+                     PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector,
+                     ProcessBuilder.Redirect outputRedirector, Duration pgStartupWait,
+                     File overrideWorkingDirectory) throws IOException
     {
         this.cleanDataDirectory = cleanDataDirectory;
         this.postgresConfig = new HashMap<>(postgresConfig);
         this.localeConfig = new HashMap<>(localeConfig);
         this.connectConfig = new HashMap<>(connectConfig);
         this.port = port;
-        this.pgDir = prepareBinaries(pgBinaryResolver);
+        this.pgDir = prepareBinaries(pgBinaryResolver, overrideWorkingDirectory);
         this.errorRedirector = errorRedirector;
         this.outputRedirector = outputRedirector;
         this.pgStartupWait = pgStartupWait;
@@ -475,6 +479,7 @@ public class EmbeddedPostgres implements Closeable
     public static class Builder
     {
         private final File parentDirectory = getWorkingDirectory();
+        private File overrideWorkingDirectory;
         private File builderDataDirectory;
         private final Map<String, String> config = new HashMap<>();
         private final Map<String, String> localeConfig = new HashMap<>();
@@ -535,6 +540,11 @@ public class EmbeddedPostgres implements Closeable
             return this;
         }
 
+        public Builder setOverrideWorkingDirectory(File workingDirectory) {
+            overrideWorkingDirectory = workingDirectory;
+            return this;
+        }
+
         public Builder setPort(int port) {
             builderPort = port;
             return this;
@@ -564,7 +574,9 @@ public class EmbeddedPostgres implements Closeable
             if (builderDataDirectory == null) {
                 builderDataDirectory = Files.createTempDirectory("epg").toFile();
             }
-            return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, config, localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector, pgStartupWait);
+            return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, config,
+                    localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector,
+                    pgStartupWait, overrideWorkingDirectory);
         }
 
         @Override
@@ -730,7 +742,7 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private static File prepareBinaries(PgBinaryResolver pgBinaryResolver)
+    private static File prepareBinaries(PgBinaryResolver pgBinaryResolver, File overrideWorkingDirectory)
     {
         PREPARE_BINARIES_LOCK.lock();
         try {
@@ -760,7 +772,8 @@ public class EmbeddedPostgres implements Closeable
                 pgArchiveData.close();
 
                 String pgDigest = Hex.encodeHexString(pgArchiveData.getMessageDigest().digest());
-                pgDir = new File(getWorkingDirectory(), String.format("PG-%s", pgDigest));
+                File workingDirectory = Optional.ofNullable(overrideWorkingDirectory).orElse(getWorkingDirectory());
+                pgDir = new File(workingDirectory, String.format("PG-%s", pgDigest));
 
                 mkdirs(pgDir);
                 final File unpackLockFile = new File(pgDir, LOCK_FILE_NAME);
