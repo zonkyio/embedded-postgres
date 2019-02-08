@@ -9,12 +9,10 @@ If you are using `Spring` or `Spring Boot` framework you can also consider using
 
 ## Features
 
-* All features of `com.opentable:otj-pg-embedded:0.12.6`
+* All features of `com.opentable:otj-pg-embedded:0.13.2`
 * Configurable version of [PostgreSQL binaries](https://github.com/zonkyio/embedded-postgres-binaries)
+* PostgreSQL 11+ support even for Linux platform
 * Support for running inside Docker, including Alpine Linux
-* Fixed the logging of initdb process ([#83](https://github.com/opentable/otj-pg-embedded/pull/83))
-* Fixed the caching of prepared databases ([#85](https://github.com/opentable/otj-pg-embedded/pull/85))
-* Improved extracting postgres archives on Windows platform ([#84](https://github.com/opentable/otj-pg-embedded/pull/84))
 
 ## Maven Configuration
 
@@ -24,7 +22,7 @@ Add the following Maven dependency:
 <dependency>
     <groupId>io.zonky.test</groupId>
     <artifactId>embedded-postgres</artifactId>
-    <version>1.2.1</version>
+    <version>1.2.2</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -125,7 +123,7 @@ You probably need to install the [Microsoft Visual C++ 2013 Redistributable Pack
 
 Running build inside Docker is fully supported, including Alpine Linux. But you must keep in mind that the **PostgreSQL database must be run under a non-root user**. Otherwise, the database does not start and fails with an error.
 
-So be sure to use a docker image that uses a non-root user, or you can use any of the following Dockerfiles to build your own image.
+So be sure to use a docker image that uses a non-root user, or you can use any of the following Dockerfiles to prepare your own image.
 
 <details>
   <summary>Standard Dockerfile</summary>
