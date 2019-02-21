@@ -27,7 +27,7 @@ Add the following Maven dependency:
 </dependency>
 ```
 
-The default version of the embedded postgres is `PostgreSQL 10.6`, but you can change it by following the instructions described in [Postgres version](#postgres-version).
+The default version of the embedded postgres is `PostgreSQL 10.7`, but you can change it by following the instructions described in [Postgres version](#postgres-version).
 
 ## Basic Usage
 
@@ -69,7 +69,7 @@ independent databases gives you.
 
 ## Postgres version
 
-The default version of the embedded postgres is `PostgreSQL 10.6`, but it can be changed by importing `embedded-postgres-binaries-bom` in a required version into your dependency management section.
+The default version of the embedded postgres is `PostgreSQL 10.7`, but it can be changed by importing `embedded-postgres-binaries-bom` in a required version into your dependency management section.
 
 ```xml
 <dependencyManagement>
