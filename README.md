@@ -1,3 +1,5 @@
+# <img src="zonky.jpg" height="100"> Embedded Postgres
+
 ## Introduction
 
 This project is a fork of [OpenTable Embedded PostgreSQL Component](https://github.com/opentable/otj-pg-embedded) created due to the inactivity of the maintainers.
@@ -22,7 +24,7 @@ Add the following Maven dependency:
 <dependency>
     <groupId>io.zonky.test</groupId>
     <artifactId>embedded-postgres</artifactId>
-    <version>1.2.2</version>
+    <version>1.2.3</version>
     <scope>test</scope>
 </dependency>
 ```
