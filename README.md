@@ -24,12 +24,12 @@ Add the following Maven dependency:
 <dependency>
     <groupId>io.zonky.test</groupId>
     <artifactId>embedded-postgres</artifactId>
-    <version>1.2.4</version>
+    <version>1.2.5</version>
     <scope>test</scope>
 </dependency>
 ```
 
-The default version of the embedded postgres is `PostgreSQL 10.9`, but you can change it by following the instructions described in [Postgres version](#postgres-version).
+The default version of the embedded postgres is `PostgreSQL 10.10`, but you can change it by following the instructions described in [Postgres version](#postgres-version).
 
 ## Basic Usage
 
@@ -71,7 +71,7 @@ independent databases gives you.
 
 ## Postgres version
 
-The default version of the embedded postgres is `PostgreSQL 10.9`, but it can be changed by importing `embedded-postgres-binaries-bom` in a required version into your dependency management section.
+The default version of the embedded postgres is `PostgreSQL 10.10`, but it can be changed by importing `embedded-postgres-binaries-bom` in a required version into your dependency management section.
 
 ```xml
 <dependencyManagement>
@@ -79,7 +79,7 @@ The default version of the embedded postgres is `PostgreSQL 10.9`, but it can be
         <dependency>
             <groupId>io.zonky.test.postgres</groupId>
             <artifactId>embedded-postgres-binaries-bom</artifactId>
-            <version>11.4.0</version>
+            <version>11.5.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
