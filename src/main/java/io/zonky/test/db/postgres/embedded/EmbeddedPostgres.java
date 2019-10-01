@@ -687,7 +687,7 @@ public class EmbeddedPostgres implements Closeable
 
             while ((entry = tarIn.getNextTarEntry()) != null) {
                 final String individualFile = entry.getName();
-                final File fsObject = new File(targetDir + "/" + individualFile);
+                final File fsObject = new File(targetDir, individualFile);
 
                 if (entry.isSymbolicLink() || entry.isLink()) {
                     Path target = FileSystems.getDefault().getPath(entry.getLinkName());
@@ -747,7 +747,7 @@ public class EmbeddedPostgres implements Closeable
     {
         PREPARE_BINARIES_LOCK.lock();
         try {
-            if (PREPARE_BINARIES.containsKey(pgBinaryResolver)) {
+            if (PREPARE_BINARIES.containsKey(pgBinaryResolver) && PREPARE_BINARIES.get(pgBinaryResolver).exists()) {
                 return PREPARE_BINARIES.get(pgBinaryResolver);
             }
 
