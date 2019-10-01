@@ -66,6 +66,7 @@ final class ProcessOutputLogger implements Runnable {
         final String threadName = (isNotBlank(processName) ? processName : "unknown") + ":" + processId(process);
         final Thread t = new Thread(new ProcessOutputLogger(logger, process));
         t.setName(threadName);
+        t.setDaemon(true);
         t.start();
     }
 
