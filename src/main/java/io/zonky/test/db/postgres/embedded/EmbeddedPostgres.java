@@ -257,6 +257,7 @@ public class EmbeddedPostgres implements Closeable
                 pgBin("pg_ctl"),
                 "-D", dataDirectory.getPath(),
                 "-o", createInitOptions().stream().collect(Collectors.joining(" ")),
+                "-w",
                 "start"
         ));
 
@@ -621,7 +622,7 @@ public class EmbeddedPostgres implements Closeable
                 ProcessOutputLogger.logOutput(LOG, process, processName);
             }
             if (0 != process.waitFor()) {
-                throw new IllegalStateException(String.format("Process %s failed%n%s", Arrays.asList(command), IOUtils.toString(process.getErrorStream())));
+                throw new IllegalStateException(String.format("Process %s failed", Arrays.asList(command)));
             }
         } catch (final RuntimeException e) { // NOPMD
             throw e;
