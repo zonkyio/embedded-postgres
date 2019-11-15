@@ -21,6 +21,7 @@ import java.util.Objects;
 import javax.sql.DataSource;
 
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 
 // TODO: Detect missing migration files.
 // cf. https://github.com/flyway/flyway/issues/1496
@@ -28,24 +29,24 @@ import org.flywaydb.core.Flyway;
 
 public final class FlywayPreparer implements DatabasePreparer {
 
-    private final Flyway flyway;
+    private final FluentConfiguration flyway;
     private final List<String> locations;
 
     public static FlywayPreparer forClasspathLocation(String... locations) {
-        Flyway f = new Flyway();
-        f.setLocations(locations);
+        FluentConfiguration f = Flyway.configure()
+            .locations(locations);
         return new FlywayPreparer(f, Arrays.asList(locations));
     }
 
-    private FlywayPreparer(Flyway flyway, List<String> locations) {
+    private FlywayPreparer(FluentConfiguration flyway, List<String> locations) {
         this.flyway = flyway;
         this.locations = locations;
     }
 
     @Override
     public void prepare(DataSource ds) throws SQLException {
-        flyway.setDataSource(ds);
-        flyway.migrate();
+        flyway.dataSource(ds);
+        flyway.load().migrate();
     }
 
     @Override
