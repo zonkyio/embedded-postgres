@@ -134,7 +134,7 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>5.0.7</version>
+            <version>6.0.8</version>
             <optional>true</optional>
         </dependency>
         <dependency>
