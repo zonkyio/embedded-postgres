@@ -2,16 +2,16 @@
 
 ## Introduction
 
-This project is a fork of [OpenTable Embedded PostgreSQL Component](https://github.com/opentable/otj-pg-embedded) created due to the inactivity of the maintainers.
+This project is a fork of [OpenTable Embedded PostgreSQL Component](https://github.com/opentable/otj-pg-embedded) created due to inactivity of maintainers.
 
 The library allows embedding PostgreSQL into Java application code with no external dependencies.
 Excellent for allowing you to unit test with a "real" Postgres without requiring end users to install and set up a database cluster.
 
-If you are using `Spring` or `Spring Boot` framework you can also consider using the specialized [embedded-database-spring-test](https://github.com/zonkyio/embedded-database-spring-test) project.
+If you are using `Spring` or `Spring Boot` framework you can also consider using the following more specialized [embedded-database-spring-test](https://github.com/zonkyio/embedded-database-spring-test) project.
 
 ## Features
 
-* All features of `com.opentable:otj-pg-embedded:0.13.1`
+* All features of `com.opentable:otj-pg-embedded:0.13.3`
 * Configurable version of [PostgreSQL binaries](https://github.com/zonkyio/embedded-postgres-binaries)
 * PostgreSQL 11+ support even for Linux platform
 * Support for running inside Docker, including Alpine Linux
@@ -24,12 +24,12 @@ Add the following Maven dependency:
 <dependency>
     <groupId>io.zonky.test</groupId>
     <artifactId>embedded-postgres</artifactId>
-    <version>1.2.5</version>
+    <version>1.2.6</version>
     <scope>test</scope>
 </dependency>
 ```
 
-The default version of the embedded postgres is `PostgreSQL 10.10`, but you can change it by following the instructions described in [Postgres version](#postgres-version).
+The default version of the embedded postgres is `PostgreSQL 10.11`, but you can change it by following the instructions described in [Postgres version](#postgres-version).
 
 ## Basic Usage
 
@@ -71,7 +71,7 @@ independent databases gives you.
 
 ## Postgres version
 
-The default version of the embedded postgres is `PostgreSQL 10.10`, but it can be changed by importing `embedded-postgres-binaries-bom` in a required version into your dependency management section.
+The default version of the embedded postgres is `PostgreSQL 10.11`, but it can be changed by importing `embedded-postgres-binaries-bom` in a required version into your dependency management section.
 
 ```xml
 <dependencyManagement>
@@ -79,7 +79,7 @@ The default version of the embedded postgres is `PostgreSQL 10.10`, but it can b
         <dependency>
             <groupId>io.zonky.test.postgres</groupId>
             <artifactId>embedded-postgres-binaries-bom</artifactId>
-            <version>11.5.0</version>
+            <version>11.6.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
