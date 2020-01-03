@@ -242,6 +242,12 @@ public class EmbeddedPostgres implements Closeable
         final StopWatch watch = new StopWatch();
         watch.start();
         List<String> command = new ArrayList<>();
+        if (SystemUtils.IS_OS_LINUX) {
+            Long uid = new com.sun.security.auth.module.UnixSystem().getUid();
+            if (uid == 0) {
+                command.addAll(Arrays.asList("unshare", "-U"));
+            }
+        }
         command.addAll(Arrays.asList(
                 pgBin("initdb"), "-A", "trust", "-U", PG_SUPERUSER,
                 "-D", dataDirectory.getPath(), "-E", "UTF-8"));
@@ -259,6 +265,12 @@ public class EmbeddedPostgres implements Closeable
         }
 
         final List<String> args = new ArrayList<>();
+        if (SystemUtils.IS_OS_LINUX) {
+            Long uid = new com.sun.security.auth.module.UnixSystem().getUid();
+            if (uid == 0) {
+                args.addAll(Arrays.asList("unshare", "-U"));
+            }
+        }
         args.addAll(Arrays.asList(
                 pgBin("pg_ctl"),
                 "-D", dataDirectory.getPath(),
@@ -414,7 +426,15 @@ public class EmbeddedPostgres implements Closeable
 
     private void pgCtl(File dir, String action)
     {
-        system(pgBin("pg_ctl"), "-D", dir.getPath(), action, "-m", PG_STOP_MODE, "-t", PG_STOP_WAIT_S, "-w");
+        final List<String> args = new ArrayList<>();
+        if (SystemUtils.IS_OS_LINUX) {
+            Long uid = new com.sun.security.auth.module.UnixSystem().getUid();
+            if (uid == 0) {
+                args.addAll(Arrays.asList("unshare", "-U"));
+            }
+        }
+        args.addAll(Arrays.asList(pgBin("pg_ctl"), "-D", dir.getPath(), action, "-m", PG_STOP_MODE, "-t", PG_STOP_WAIT_S, "-w"));
+        system(args.toArray(new String[args.size()]));
     }
 
     private void cleanOldDataDirectories(File parentDirectory)
@@ -780,7 +800,12 @@ public class EmbeddedPostgres implements Closeable
 
                 String pgDigest = Hex.encodeHexString(pgArchiveData.getMessageDigest().digest());
                 File workingDirectory = Optional.ofNullable(overrideWorkingDirectory).orElse(getWorkingDirectory());
-                pgDir = new File(workingDirectory, String.format("PG-%s", pgDigest));
+                if (SystemUtils.IS_OS_LINUX || SystemUtils.IS_OS_MAC_OSX) {
+                    Long uid = new com.sun.security.auth.module.UnixSystem().getUid();
+                    pgDir = new File(workingDirectory, String.format("PG-%d-%s", uid, pgDigest));
+                } else {
+                    pgDir = new File(workingDirectory, String.format("PG-%s", pgDigest));
+                }
 
                 mkdirs(pgDir);
                 final File unpackLockFile = new File(pgDir, LOCK_FILE_NAME);
