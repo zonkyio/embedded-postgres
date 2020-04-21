@@ -87,6 +87,41 @@ The default version of the embedded postgres is `PostgreSQL 10.11`, but it can b
 </dependencyManagement>
 ```
 
+<details>
+  <summary>Using Maven BOMs in Gradle</summary>
+  
+  In Gradle, there are several ways how to import a Maven BOM.
+  
+  1. You can define a resolution strategy to check and change the version of transitive dependencies manually:
+  
+         configurations.all {
+              resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+                  if (details.requested.group == 'io.zonky.test.postgres') {
+                     details.useVersion '11.6.0'
+                 }
+             }
+         }
+  
+  2. If you use Gradle 5+, [Maven BOMs are supported out of the box](https://docs.gradle.org/5.0/userguide/managing_transitive_dependencies.html#sec:bom_import), so you can import the bom:
+  
+         dependencies {
+              implementation enforcedPlatform('io.zonky.test.postgres:embedded-postgres-binaries-bom:11.6.0')
+         }
+  
+  3. Or, you can use [Spring's dependency management plugin](https://docs.spring.io/dependency-management-plugin/docs/current/reference/html/#dependency-management-configuration-bom-import) that provides Maven-like dependency management to Gradle:
+  
+         plugins {
+             id "io.spring.dependency-management" version "1.0.6.RELEASE"
+         }
+         
+         dependencyManagement {
+              imports {
+                   mavenBom 'io.zonky.test.postgres:embedded-postgres-binaries-bom:11.6.0'
+              }
+         }
+
+</details><br/>
+
 A list of all available versions of postgres binaries is here: https://mvnrepository.com/artifact/io.zonky.test.postgres/embedded-postgres-binaries-bom
 
 Note that the release cycle of the postgres binaries is independent of the release cycle of this library, so you can upgrade to a new version of postgres binaries immediately after it is released.
