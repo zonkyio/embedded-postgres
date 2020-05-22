@@ -741,7 +741,7 @@ public class EmbeddedPostgres implements Closeable
                 }
 
                 if (individualFile.startsWith("bin/") || individualFile.startsWith("./bin/")) {
-                    fsObject.setExecutable(true);
+                    fsObject.setExecutable(true, false);
                 }
             }
 
@@ -783,6 +783,8 @@ public class EmbeddedPostgres implements Closeable
                 pgDir = new File(workingDirectory, String.format("PG-%s", pgDigest));
 
                 mkdirs(pgDir);
+                workingDirectory.setWritable(true, false);
+
                 final File unpackLockFile = new File(pgDir, LOCK_FILE_NAME);
                 final File pgDirExists = new File(pgDir, ".exists");
 
