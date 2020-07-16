@@ -14,12 +14,7 @@
 package io.zonky.test.db.postgres.embedded;
 
 
-import java.io.ByteArrayInputStream;
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -55,7 +50,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
@@ -72,6 +66,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tukaani.xz.XZInputStream;
 
+import static io.zonky.test.db.postgres.util.LinuxUtils.isUnshareUseable;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Collections.unmodifiableMap;
@@ -104,6 +99,7 @@ public class EmbeddedPostgres implements Closeable
     private volatile FileOutputStream lockStream;
     private volatile FileLock lock;
     private final boolean cleanDataDirectory;
+    private static boolean useUnshare;
 
     private final ProcessBuilder.Redirect errorRedirector;
     private final ProcessBuilder.Redirect outputRedirector;
@@ -132,6 +128,8 @@ public class EmbeddedPostgres implements Closeable
         this.outputRedirector = outputRedirector;
         this.pgStartupWait = pgStartupWait;
         Objects.requireNonNull(this.pgStartupWait, "Wait time cannot be null");
+
+        useUnshare = isUnshareUseable();
 
         if (parentDirectory != null) {
             mkdirs(parentDirectory);
@@ -243,10 +241,10 @@ public class EmbeddedPostgres implements Closeable
         watch.start();
         List<String> command = new ArrayList<>();
         command.addAll(Arrays.asList(
-                pgBin("initdb"), "-A", "trust", "-U", PG_SUPERUSER,
+                "-A", "trust", "-U", PG_SUPERUSER,
                 "-D", dataDirectory.getPath(), "-E", "UTF-8"));
         command.addAll(createLocaleOptions());
-        system(command.toArray(new String[command.size()]));
+        system(pgBin("initdb"), command);
         LOG.info("{} initdb completed in {}", instanceId, watch);
     }
 
@@ -259,13 +257,11 @@ public class EmbeddedPostgres implements Closeable
         }
 
         final List<String> args = new ArrayList<>();
+        args.addAll(pgBin("postgres"));
         args.addAll(Arrays.asList(
-                pgBin("pg_ctl"),
-                "-D", dataDirectory.getPath(),
-                "-o", createInitOptions().stream().collect(Collectors.joining(" ")),
-                "-w",
-                "start"
+                "-D", dataDirectory.getPath()
         ));
+        args.addAll(createInitOptions());
 
         final ProcessBuilder builder = new ProcessBuilder(args);
 
@@ -275,7 +271,7 @@ public class EmbeddedPostgres implements Closeable
         final Process postmaster = builder.start();
 
         if (outputRedirector.type() == ProcessBuilder.Redirect.Type.PIPE) {
-            ProcessOutputLogger.logOutput(LOG, postmaster, "pg_ctl");
+            ProcessOutputLogger.logOutput(LOG, postmaster, "postgres");
         }
 
         LOG.info("{} postmaster started as {} on port {}.  Waiting up to {} for server startup to finish.", instanceId, postmaster.toString(), port, pgStartupWait);
@@ -414,7 +410,13 @@ public class EmbeddedPostgres implements Closeable
 
     private void pgCtl(File dir, String action)
     {
-        system(pgBin("pg_ctl"), "-D", dir.getPath(), action, "-m", PG_STOP_MODE, "-t", PG_STOP_WAIT_S, "-w");
+        final List<String> args = new ArrayList<>();
+        args.addAll(Arrays.asList(
+                "-D", dir.getPath(), action,
+                "-m", PG_STOP_MODE, "-t",
+                PG_STOP_WAIT_S, "-w"
+        ));
+        system(pgBin("pg_ctl"), args);
     }
 
     private void cleanOldDataDirectories(File parentDirectory)
@@ -461,10 +463,17 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private String pgBin(String binaryName)
+    private List<String> pgBin(String binaryName)
     {
+        final List<String> args = new ArrayList<>();
+        if (useUnshare) {
+            args.addAll(Arrays.asList(
+                    "unshare", "-U"
+            ));
+        }
         final String extension = SystemUtils.IS_OS_WINDOWS ? ".exe" : "";
-        return new File(pgDir, "bin/" + binaryName + extension).getPath();
+        args.add(new File(pgDir, "bin/" + binaryName + extension).getPath());
+        return args;
     }
 
     private static File getWorkingDirectory()
@@ -614,8 +623,11 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private void system(String... command)
+    private void system(List<String> bin, List<String> args)
     {
+        final List<String> command = new ArrayList<>();
+        command.addAll(bin);
+        command.addAll(args);
         try {
             final ProcessBuilder builder = new ProcessBuilder(command);
             builder.redirectErrorStream(true);
@@ -624,7 +636,7 @@ public class EmbeddedPostgres implements Closeable
             final Process process = builder.start();
 
             if (outputRedirector.type() == ProcessBuilder.Redirect.Type.PIPE) {
-                String processName = command[0].replaceAll("^.*[\\\\/](\\w+)(\\.exe)?$", "$1");
+                String processName = bin.get(bin.size() - 1).replaceAll("^.*[\\\\/](\\w+)(\\.exe)?$", "$1");
                 ProcessOutputLogger.logOutput(LOG, process, processName);
             }
             if (0 != process.waitFor()) {
