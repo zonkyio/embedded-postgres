@@ -22,13 +22,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -38,8 +34,7 @@ public final class LinuxUtils {
     private static final Logger logger = LoggerFactory.getLogger(LinuxUtils.class);
 
     private static final String DISTRIBUTION_NAME = resolveDistributionName();
-
-    private static final boolean UNSHARE_USEABLE = unshareUseable();
+    private static final boolean UNSHARE_AVAILABLE = unshareAvailable();
 
     private LinuxUtils() {}
 
@@ -47,7 +42,9 @@ public final class LinuxUtils {
         return DISTRIBUTION_NAME;
     }
 
-    public static boolean isUnshareUseable() { return UNSHARE_USEABLE; }
+    public static boolean isUnshareAvailable() {
+        return UNSHARE_AVAILABLE;
+    }
 
     private static String resolveDistributionName() {
         if (!SystemUtils.IS_OS_LINUX) {
@@ -95,46 +92,36 @@ public final class LinuxUtils {
         }
     }
 
-    private static boolean unshareUseable() {
-        if (SystemUtils.IS_OS_LINUX) {
-            int uid;
-            try {
-                Class<?> c = Class.forName("com.sun.security.auth.module.UnixSystem");
-                Object o = c.getDeclaredConstructor().newInstance();
-                Method method = c.getDeclaredMethod("getUid");
-                uid = ((Number) method.invoke(o)).intValue();
-            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException |
-                    NoSuchMethodException | InvocationTargetException e) {
+    private static boolean unshareAvailable() {
+        if (!SystemUtils.IS_OS_LINUX) {
+            return false;
+        }
+
+        try {
+            Class<?> clazz = Class.forName("com.sun.security.auth.module.UnixSystem");
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+            Method method = clazz.getDeclaredMethod("getUid");
+            int uid = ((Number) method.invoke(instance)).intValue();
+
+            if (uid != 0) {
                 return false;
             }
-            if (uid == 0) {
-                final List<String> command = new ArrayList<>();
-                command.addAll(Arrays.asList(
-                        "unshare", "-U",
-                        "id", "-u"
-                ));
-                final ProcessBuilder builder = new ProcessBuilder(command);
-                final Process process;
-                try {
-                    process = builder.start();
-                } catch (IOException e) {
-                    return false;
-                }
-                BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                try {
-                    process.waitFor();
-                } catch (InterruptedException e) {
-                    return false;
-                }
-                try {
-                    if (process.exitValue() == 0 && br.readLine() != "0") {
-                        return true;
-                    }
-                } catch (IOException e) {
-                    return false;
+
+            ProcessBuilder builder = new ProcessBuilder();
+            builder.command("unshare", "-U", "id", "-u");
+
+            Process process = builder.start();
+            process.waitFor();
+
+            try (BufferedReader outputReader = new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))) {
+                if (process.exitValue() == 0 && !"0".equals(outputReader.readLine())) {
+                    return true;
                 }
             }
+
+            return false;
+        } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 }
