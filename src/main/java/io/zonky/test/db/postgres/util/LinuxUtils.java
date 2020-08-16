@@ -22,6 +22,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -33,11 +34,16 @@ public final class LinuxUtils {
     private static final Logger logger = LoggerFactory.getLogger(LinuxUtils.class);
 
     private static final String DISTRIBUTION_NAME = resolveDistributionName();
+    private static final boolean UNSHARE_AVAILABLE = unshareAvailable();
 
     private LinuxUtils() {}
 
     public static String getDistributionName() {
         return DISTRIBUTION_NAME;
+    }
+
+    public static boolean isUnshareAvailable() {
+        return UNSHARE_AVAILABLE;
     }
 
     private static String resolveDistributionName() {
@@ -83,6 +89,39 @@ public final class LinuxUtils {
         } catch (Exception e) {
             logger.error("It's not possible to detect the name of the Linux distribution", e);
             return null;
+        }
+    }
+
+    private static boolean unshareAvailable() {
+        if (!SystemUtils.IS_OS_LINUX) {
+            return false;
+        }
+
+        try {
+            Class<?> clazz = Class.forName("com.sun.security.auth.module.UnixSystem");
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+            Method method = clazz.getDeclaredMethod("getUid");
+            int uid = ((Number) method.invoke(instance)).intValue();
+
+            if (uid != 0) {
+                return false;
+            }
+
+            ProcessBuilder builder = new ProcessBuilder();
+            builder.command("unshare", "-U", "id", "-u");
+
+            Process process = builder.start();
+            process.waitFor();
+
+            try (BufferedReader outputReader = new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))) {
+                if (process.exitValue() == 0 && !"0".equals(outputReader.readLine())) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (Exception e) {
+            return false;
         }
     }
 }

@@ -150,17 +150,21 @@ Since `PostgreSQL 10.0`, there are additional artifacts with `alpine-lite` suffi
 
 ### Process [/tmp/embedded-pg/PG-XYZ/bin/initdb, ...] failed
 
-Try to remove `/tmp/embedded-pg/PG-XYZ` directory containing temporary binaries of the embedded postgres database. That should solve the problem. 
+Check the console output for an `initdb: cannot be run as root` message. If the error is present, try to upgrade to a newer version of the library (1.2.8+), or ensure the build process to be running as a non-root user.
+
+If the error is not present, try to clean up the `/tmp/embedded-pg/PG-XYZ` directory containing temporary binaries of the embedded database. 
 
 ### Running tests on Windows does not work
 
-You probably need to install the [Microsoft Visual C++ 2013 Redistributable Package](https://support.microsoft.com/en-us/help/3179560/update-for-visual-c-2013-and-visual-c-redistributable-package). The version 2013 is important, installation of other versions will not help. More detailed is the problem discussed [here](https://github.com/opentable/otj-pg-embedded/issues/65).
+You probably need to install [Microsoft Visual C++ 2013 Redistributable Package](https://support.microsoft.com/en-us/help/3179560/update-for-visual-c-2013-and-visual-c-redistributable-package). The version 2013 is important, installation of other versions will not help. More detailed is the problem discussed [here](https://github.com/opentable/otj-pg-embedded/issues/65).
 
-### Running tests inside Docker does not work
+### Running tests in Docker does not work
 
-Running build inside Docker is fully supported, including Alpine Linux. But you must keep in mind that the **PostgreSQL database must be run under a non-root user**. Otherwise, the database does not start and fails with an error.
+Running builds inside a Docker container is fully supported, including Alpine Linux. However, PostgreSQL has a restriction the database process must run under a non-root user. Otherwise, the database does not start and fails with an error.  
 
-So be sure to use a docker image that uses a non-root user, or you can use any of the following Dockerfiles to prepare your own image.
+So be sure to use a docker image that uses a non-root user. Or, since version `1.2.8` you can run the docker container with `--privileged` option, which allows taking advantage of `unshare` command to run the database process in a separate namespace.
+
+Below are some examples of how to prepare a docker image running with a non-root user:
 
 <details>
   <summary>Standard Dockerfile</summary>

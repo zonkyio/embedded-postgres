@@ -13,7 +13,6 @@
  */
 package io.zonky.test.db.postgres.embedded;
 
-
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.File;
@@ -55,7 +54,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import javax.sql.DataSource;
 
@@ -71,6 +69,8 @@ import org.postgresql.ds.PGSimpleDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tukaani.xz.XZInputStream;
+
+import io.zonky.test.db.postgres.util.LinuxUtils;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -241,12 +241,12 @@ public class EmbeddedPostgres implements Closeable
     {
         final StopWatch watch = new StopWatch();
         watch.start();
-        List<String> command = new ArrayList<>();
-        command.addAll(Arrays.asList(
-                pgBin("initdb"), "-A", "trust", "-U", PG_SUPERUSER,
+        List<String> args = new ArrayList<>();
+        args.addAll(Arrays.asList(
+                "-A", "trust", "-U", PG_SUPERUSER,
                 "-D", dataDirectory.getPath(), "-E", "UTF-8"));
-        command.addAll(createLocaleOptions());
-        system(command.toArray(new String[command.size()]));
+        args.addAll(createLocaleOptions());
+        system(INIT_DB, args);
         LOG.info("{} initdb completed in {}", instanceId, watch);
     }
 
@@ -259,15 +259,11 @@ public class EmbeddedPostgres implements Closeable
         }
 
         final List<String> args = new ArrayList<>();
-        args.addAll(Arrays.asList(
-                pgBin("pg_ctl"),
-                "-D", dataDirectory.getPath(),
-                "-o", createInitOptions().stream().collect(Collectors.joining(" ")),
-                "-w",
-                "start"
-        ));
+        args.addAll(Arrays.asList("-D", dataDirectory.getPath()));
+        args.addAll(createInitOptions());
 
-        final ProcessBuilder builder = new ProcessBuilder(args);
+        final ProcessBuilder builder = new ProcessBuilder();
+        POSTGRES.applyTo(builder, args);
 
         builder.redirectErrorStream(true);
         builder.redirectError(errorRedirector);
@@ -275,7 +271,7 @@ public class EmbeddedPostgres implements Closeable
         final Process postmaster = builder.start();
 
         if (outputRedirector.type() == ProcessBuilder.Redirect.Type.PIPE) {
-            ProcessOutputLogger.logOutput(LOG, postmaster, "pg_ctl");
+            ProcessOutputLogger.logOutput(LOG, postmaster, POSTGRES.processName());
         }
 
         LOG.info("{} postmaster started as {} on port {}.  Waiting up to {} for server startup to finish.", instanceId, postmaster.toString(), port, pgStartupWait);
@@ -414,7 +410,13 @@ public class EmbeddedPostgres implements Closeable
 
     private void pgCtl(File dir, String action)
     {
-        system(pgBin("pg_ctl"), "-D", dir.getPath(), action, "-m", PG_STOP_MODE, "-t", PG_STOP_WAIT_S, "-w");
+        final List<String> args = new ArrayList<>();
+        args.addAll(Arrays.asList(
+                "-D", dir.getPath(), action,
+                "-m", PG_STOP_MODE, "-t",
+                PG_STOP_WAIT_S, "-w"
+        ));
+        system(PG_CTL, args);
     }
 
     private void cleanOldDataDirectories(File parentDirectory)
@@ -459,12 +461,6 @@ public class EmbeddedPostgres implements Closeable
                 LOG.warn("While cleaning old data directories", e);
             }
         }
-    }
-
-    private String pgBin(String binaryName)
-    {
-        final String extension = SystemUtils.IS_OS_WINDOWS ? ".exe" : "";
-        return new File(pgDir, "bin/" + binaryName + extension).getPath();
     }
 
     private static File getWorkingDirectory()
@@ -614,21 +610,23 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private void system(String... command)
+    private void system(Command command, List<String> args)
     {
         try {
-            final ProcessBuilder builder = new ProcessBuilder(command);
+            final ProcessBuilder builder = new ProcessBuilder();
+
+            command.applyTo(builder, args);
             builder.redirectErrorStream(true);
             builder.redirectError(errorRedirector);
             builder.redirectOutput(outputRedirector);
+
             final Process process = builder.start();
 
             if (outputRedirector.type() == ProcessBuilder.Redirect.Type.PIPE) {
-                String processName = command[0].replaceAll("^.*[\\\\/](\\w+)(\\.exe)?$", "$1");
-                ProcessOutputLogger.logOutput(LOG, process, processName);
+                ProcessOutputLogger.logOutput(LOG, process, command.processName());
             }
             if (0 != process.waitFor()) {
-                throw new IllegalStateException(String.format("Process %s failed", Arrays.asList(command)));
+                throw new IllegalStateException(String.format("Process %s failed", builder.command()));
             }
         } catch (final RuntimeException e) { // NOPMD
             throw e;
@@ -840,5 +838,36 @@ public class EmbeddedPostgres implements Closeable
     public String toString()
     {
         return "EmbeddedPG-" + instanceId;
+    }
+
+    private final Command INIT_DB = new Command("initdb");
+    private final Command POSTGRES = new Command("postgres");
+    private final Command PG_CTL = new Command("pg_ctl");
+
+    private class Command {
+
+        private final String commandName;
+
+        private Command(String commandName) {
+            this.commandName = commandName;
+        }
+
+        public String processName() {
+            return commandName;
+        }
+
+        public void applyTo(ProcessBuilder builder, List<String> arguments) {
+            List<String> command = new ArrayList<>();
+
+            if (LinuxUtils.isUnshareAvailable()) {
+                command.addAll(Arrays.asList("unshare", "-U"));
+            }
+
+            String extension = SystemUtils.IS_OS_WINDOWS ? ".exe" : "";
+            command.add(new File(pgDir, "bin/" + commandName + extension).getPath());
+            command.addAll(arguments);
+
+            builder.command(command);
+        }
     }
 }
