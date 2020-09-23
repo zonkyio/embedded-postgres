@@ -1,7 +1,7 @@
-package io.zonky.test.db.postgres.embedded;
+package io.zonky.test.db.postgres.junit;
 
-import io.zonky.test.db.postgres.junit.EmbeddedPostgresRules;
-import io.zonky.test.db.postgres.junit.PreparedDbRule;
+import io.zonky.test.db.postgres.embedded.ConnectionInfo;
+import io.zonky.test.db.postgres.embedded.DatabasePreparer;
 import org.junit.Rule;
 import org.junit.Test;
 import org.postgresql.ds.common.BaseDataSource;

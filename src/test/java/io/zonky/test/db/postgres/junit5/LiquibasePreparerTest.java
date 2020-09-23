@@ -11,23 +11,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.zonky.test.db.postgres.embedded;
+package io.zonky.test.db.postgres.junit5;
 
-import static org.junit.Assert.assertEquals;
+import io.zonky.test.db.postgres.embedded.LiquibasePreparer;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import org.junit.Rule;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import io.zonky.test.db.postgres.junit.EmbeddedPostgresRules;
-import io.zonky.test.db.postgres.junit.PreparedDbRule;
+public class LiquibasePreparerTest {
 
-public class FlywayPreparerTest {
-    @Rule
-    public PreparedDbRule db = EmbeddedPostgresRules.preparedDatabase(FlywayPreparer.forClasspathLocation("db/testing"));
+    @RegisterExtension
+    public PreparedDbExtension db = EmbeddedPostgresExtension.preparedDatabase(LiquibasePreparer.forClasspathLocation("liqui/master.xml"));
 
     @Test
     public void testTablesMade() throws Exception {
