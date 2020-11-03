@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.zonky.test.db.postgres.embedded;
+package io.zonky.test.db.postgres.junit;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -19,9 +19,6 @@ import java.sql.Statement;
 
 import org.junit.Rule;
 import org.junit.Test;
-
-import io.zonky.test.db.postgres.junit.EmbeddedPostgresRules;
-import io.zonky.test.db.postgres.junit.SingleInstancePostgresRule;
 
 public class IsolationTest
 {

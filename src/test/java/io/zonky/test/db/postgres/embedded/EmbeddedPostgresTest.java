@@ -13,22 +13,23 @@
  */
 package io.zonky.test.db.postgres.embedded;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 public class EmbeddedPostgresTest
 {
-    @Rule
-    public TemporaryFolder tf = new TemporaryFolder();
+    @TempDir
+    public Path tf;
 
     @Test
     public void testEmbeddedPg() throws Exception
@@ -47,7 +48,7 @@ public class EmbeddedPostgresTest
     public void testEmbeddedPgCreationWithNestedDataDirectory() throws Exception
     {
         try (EmbeddedPostgres pg = EmbeddedPostgres.builder()
-                .setDataDirectory(tf.newFolder("data-dir-parent") + "/data-dir")
+                .setDataDirectory(Files.createDirectories(tf.resolve("data-dir-parent").resolve("data-dir")))
                 .start()) {
             // nothing to do
         }

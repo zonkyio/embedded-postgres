@@ -17,18 +17,17 @@ import io.zonky.test.db.postgres.embedded.ConnectionInfo;
 import io.zonky.test.db.postgres.embedded.DatabasePreparer;
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import io.zonky.test.db.postgres.embedded.PreparedDbProvider;
-import org.junit.jupiter.api.extension.AfterAllCallback;
-import org.junit.jupiter.api.extension.BeforeAllCallback;
-import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.*;
 
 import javax.sql.DataSource;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-public class PreparedDbExtension implements BeforeAllCallback, AfterAllCallback {
+public class PreparedDbExtension implements BeforeAllCallback, AfterAllCallback, BeforeEachCallback, AfterEachCallback {
 
     private final DatabasePreparer preparer;
+    private boolean perClass = false;
     private volatile DataSource dataSource;
     private volatile PreparedDbProvider provider;
     private volatile ConnectionInfo connectionInfo;
@@ -55,6 +54,7 @@ public class PreparedDbExtension implements BeforeAllCallback, AfterAllCallback 
         provider = PreparedDbProvider.forPreparer(preparer, builderCustomizers);
         connectionInfo = provider.createNewDatabase();
         dataSource = provider.createDataSourceFromConnectionInfo(connectionInfo);
+        perClass = true;
     }
 
     @Override
@@ -62,6 +62,25 @@ public class PreparedDbExtension implements BeforeAllCallback, AfterAllCallback 
         dataSource = null;
         connectionInfo = null;
         provider = null;
+        perClass = false;
+    }
+
+    @Override
+    public void beforeEach(ExtensionContext extensionContext) throws Exception {
+        if (!perClass) {
+            provider = PreparedDbProvider.forPreparer(preparer, builderCustomizers);
+            connectionInfo = provider.createNewDatabase();
+            dataSource = provider.createDataSourceFromConnectionInfo(connectionInfo);
+        }
+    }
+
+    @Override
+    public void afterEach(ExtensionContext extensionContext) {
+        if (!perClass) {
+            dataSource = null;
+            connectionInfo = null;
+            provider = null;
+        }
     }
 
     public DataSource getTestDatabase() {

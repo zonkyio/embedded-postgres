@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.zonky.test.db.postgres.embedded;
+package io.zonky.test.db.postgres.junit;
 
 import static org.junit.Assert.assertEquals;
 
@@ -24,11 +24,11 @@ import java.sql.Statement;
 
 import javax.sql.DataSource;
 
+import io.zonky.test.db.postgres.embedded.ConnectionInfo;
+import io.zonky.test.db.postgres.embedded.DatabaseConnectionPreparer;
+import io.zonky.test.db.postgres.embedded.DatabasePreparer;
 import org.junit.Rule;
 import org.junit.Test;
-
-import io.zonky.test.db.postgres.junit.EmbeddedPostgresRules;
-import io.zonky.test.db.postgres.junit.PreparedDbRule;
 
 public class PreparedDbTest {
 
