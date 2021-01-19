@@ -850,7 +850,7 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    public static boolean isPgBinReady(File pgDirExists) {
+    private static boolean isPgBinReady(File pgDirExists) {
         if (!pgDirExists.exists()) {
             return false;
         }
@@ -859,7 +859,7 @@ public class EmbeddedPostgres implements Closeable
         File[] otherFiles = Optional.ofNullable(parentDir.listFiles(file -> !file.equals(pgDirExists))).orElseGet(() -> new File[0]);
 
         long contentLastModified = Stream.of(otherFiles).mapToLong(File::lastModified).max().orElse(Long.MAX_VALUE);
-        return parentDir.lastModified() <= pgDirExists.lastModified() && contentLastModified <= pgDirExists.lastModified();
+        return parentDir.lastModified() - 100 <= pgDirExists.lastModified() && contentLastModified <= pgDirExists.lastModified();
     }
 
     @Override
