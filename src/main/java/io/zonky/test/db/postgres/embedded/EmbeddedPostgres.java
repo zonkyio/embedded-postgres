@@ -43,17 +43,20 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Stream;
 
 import javax.sql.DataSource;
 
@@ -681,11 +684,12 @@ public class EmbeddedPostgres implements Closeable
      * @param stream    A stream with the postgres binaries.
      * @param targetDir The directory to extract the content to.
      */
-    private static void extractTxz(InputStream stream, String targetDir) throws IOException {
+    private static void extractTxz(InputStream stream, File targetDir) throws IOException {
         try (
                 XZInputStream xzIn = new XZInputStream(stream);
                 TarArchiveInputStream tarIn = new TarArchiveInputStream(xzIn)
         ) {
+            final Set<File> dirsToUpdate = new HashSet<>();
             final Phaser phaser = new Phaser(1);
             TarArchiveEntry entry;
 
@@ -693,7 +697,18 @@ public class EmbeddedPostgres implements Closeable
                 final String individualFile = entry.getName();
                 final File fsObject = new File(targetDir, individualFile);
 
-                if (entry.isSymbolicLink() || entry.isLink()) {
+                if (fsObject.exists()) {
+                    fsObject.setLastModified(System.currentTimeMillis());
+
+                    File parentDir = fsObject.getParentFile();
+                    while (parentDir != null) {
+                        dirsToUpdate.add(parentDir);
+                        if (targetDir.equals(parentDir)) {
+                            break;
+                        }
+                        parentDir = parentDir.getParentFile();
+                    }
+                } else if (entry.isSymbolicLink() || entry.isLink()) {
                     Path target = FileSystems.getDefault().getPath(entry.getLinkName());
                     Files.createSymbolicLink(fsObject.toPath(), target);
                 } else if (entry.isFile()) {
@@ -743,6 +758,10 @@ public class EmbeddedPostgres implements Closeable
                 }
             }
 
+            for (File updatedDir : dirsToUpdate) {
+                updatedDir.setLastModified(System.currentTimeMillis());
+            }
+
             phaser.arriveAndAwaitAdvance();
         }
     }
@@ -786,20 +805,17 @@ public class EmbeddedPostgres implements Closeable
                 final File unpackLockFile = new File(pgDir, LOCK_FILE_NAME);
                 final File pgDirExists = new File(pgDir, ".exists");
 
-                if (!pgDirExists.exists()) {
+                if (!isPgBinReady(pgDirExists)) {
                     try (FileOutputStream lockStream = new FileOutputStream(unpackLockFile);
                          FileLock unpackLock = lockStream.getChannel().tryLock()) {
                         if (unpackLock != null) {
                             try {
-                                if (pgDirExists.exists()) {
-                                    throw new IllegalStateException("unpack lock acquired but .exists file is present " + pgDirExists);
-                                }
                                 LOG.info("Extracting Postgres...");
                                 try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray())) {
-                                    extractTxz(bais, pgDir.getPath());
+                                    extractTxz(bais, pgDir);
                                 }
                                 if (!pgDirExists.createNewFile()) {
-                                    throw new IllegalStateException("couldn't make .exists file " + pgDirExists);
+                                    pgDirExists.setLastModified(System.currentTimeMillis());
                                 }
                             } catch (Exception e) {
                                 LOG.error("while unpacking Postgres", e);
@@ -807,10 +823,10 @@ public class EmbeddedPostgres implements Closeable
                         } else {
                             // the other guy is unpacking for us.
                             int maxAttempts = 60;
-                            while (!pgDirExists.exists() && --maxAttempts > 0) {
+                            while (!isPgBinReady(pgDirExists) && --maxAttempts > 0) {
                                 Thread.sleep(1000L);
                             }
-                            if (!pgDirExists.exists()) {
+                            if (!isPgBinReady(pgDirExists)) {
                                 throw new IllegalStateException("Waited 60 seconds for postgres to be unpacked but it never finished!");
                             }
                         }
@@ -832,6 +848,18 @@ public class EmbeddedPostgres implements Closeable
         } finally {
             PREPARE_BINARIES_LOCK.unlock();
         }
+    }
+
+    public static boolean isPgBinReady(File pgDirExists) {
+        if (!pgDirExists.exists()) {
+            return false;
+        }
+
+        File parentDir = pgDirExists.getParentFile();
+        File[] otherFiles = Optional.ofNullable(parentDir.listFiles(file -> !file.equals(pgDirExists))).orElseGet(() -> new File[0]);
+
+        long contentLastModified = Stream.of(otherFiles).mapToLong(File::lastModified).max().orElse(Long.MAX_VALUE);
+        return parentDir.lastModified() <= pgDirExists.lastModified() && contentLastModified <= pgDirExists.lastModified();
     }
 
     @Override
