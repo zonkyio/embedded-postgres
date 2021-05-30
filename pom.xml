@@ -51,15 +51,11 @@
 
     <developers>
         <developer>
-            <name>Roman Pichlik</name>
-            <email>roman.pichlik@zonky.cz</email>
-        </developer>
-        <developer>
             <name>Tomas Vanek</name>
-            <email>tomas.vanek@zonky.cz</email>
+            <email>tomix26@gmail.com</email>
         </developer>
         <developer>
-            <name>Developers Zonky</name>
+            <name>Zonky Developers</name>
             <email>developers@zonky.cz</email>
         </developer>
     </developers>
