@@ -20,6 +20,7 @@ import java.util.Objects;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.lang3.reflect.MethodUtils;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.configuration.FluentConfiguration;
 
@@ -29,24 +30,28 @@ import org.flywaydb.core.api.configuration.FluentConfiguration;
 
 public final class FlywayPreparer implements DatabasePreparer {
 
-    private final FluentConfiguration flyway;
+    private final FluentConfiguration configuration;
     private final List<String> locations;
 
     public static FlywayPreparer forClasspathLocation(String... locations) {
-        FluentConfiguration f = Flyway.configure()
-            .locations(locations);
-        return new FlywayPreparer(f, Arrays.asList(locations));
+        FluentConfiguration config = Flyway.configure().locations(locations);
+        return new FlywayPreparer(config, Arrays.asList(locations));
     }
 
-    private FlywayPreparer(FluentConfiguration flyway, List<String> locations) {
-        this.flyway = flyway;
+    private FlywayPreparer(FluentConfiguration configuration, List<String> locations) {
+        this.configuration = configuration;
         this.locations = locations;
     }
 
     @Override
     public void prepare(DataSource ds) throws SQLException {
-        flyway.dataSource(ds);
-        flyway.load().migrate();
+        configuration.dataSource(ds);
+        Flyway flyway = configuration.load();
+        try {
+            MethodUtils.invokeMethod(flyway, "migrate");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
