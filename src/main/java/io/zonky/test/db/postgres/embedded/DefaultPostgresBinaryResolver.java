@@ -50,7 +50,7 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
         if (distribution != null) {
             Resource resource = findPgBinary(normalize(format("postgres-%s-%s-%s.txz", system, architecture, distribution)));
             if (resource != null) {
-                logger.info("Distribution specific postgres binaries found: {}", resource.getFilename());
+                logger.info("Distribution specific postgres binaries found: '{}'", resource.getFilename());
                 return resource.getInputStream();
             } else {
                 logger.debug("Distribution specific postgres binaries not found");
@@ -59,13 +59,25 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
 
         Resource resource = findPgBinary(normalize(format("postgres-%s-%s.txz", system, architecture)));
         if (resource != null) {
-            logger.info("System specific postgres binaries found: {}", resource.getFilename());
+            logger.info("System specific postgres binaries found: '{}'", resource.getFilename());
             return resource.getInputStream();
         }
 
-        logger.error("No postgres binaries were found, you must add an appropriate maven dependency " +
-                "that meets the following parameters - system: {}, architecture: {}", system, architecture);
-        throw new IllegalStateException("Missing postgres binaries");
+        if (StringUtils.equals(system, "Darwin") && StringUtils.equals(machineHardware, "aarch64")) {
+            resource = findPgBinary(normalize(format("postgres-%s-%s.txz", system, "x86_64")));
+            if (resource != null) {
+                logger.warn("No native binaries supporting aarch64 architecture found. " +
+                        "Trying to use binaries for amd64 architecture instead: '{}'. " +
+                        "Make sure you have Rosetta 2 emulation enabled. " +
+                        "Note that performance may be degraded.", resource.getFilename());
+                return resource.getInputStream();
+            }
+        }
+
+        logger.error("No postgres binaries found, you need to add an appropriate maven dependency " +
+                "that meets the following parameters - system: '{}', architecture: '{}' " +
+                "[https://github.com/zonkyio/embedded-postgres#additional-architectures]", system, architecture);
+        throw new IllegalStateException("Missing embedded postgres binaries");
     }
 
     private static Resource findPgBinary(String resourceLocation) throws IOException {
@@ -74,8 +86,8 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
         List<URL> urls = Collections.list(classLoader.getResources(resourceLocation));
 
         if (urls.size() > 1) {
-            logger.error("Detected multiple binaries of the same architecture: {}", urls);
-            throw new IllegalStateException("Duplicate postgres binaries");
+            logger.error("Detected multiple binaries of the same architecture: '{}'", urls);
+            throw new IllegalStateException("Duplicate embedded postgres binaries");
         }
         if (urls.size() == 1) {
             return new Resource(urls.get(0));
