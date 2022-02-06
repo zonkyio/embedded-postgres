@@ -1,0 +1,35 @@
+name: Release
+on:
+  milestone:
+    types: [closed]
+jobs:
+  build:
+    name: Release ${{ github.event.milestone.title }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          ref: master
+          fetch-depth: 0
+      - name: Set up Git
+        run: |
+          git config user.name "Zonky Bot"
+          git config user.email "bot@zonky.com"
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'zulu'
+          java-version: 8
+          server-id: ossrh
+          server-username: MAVEN_USER
+          server-password: MAVEN_PASS
+          gpg-private-key: ${{ secrets.SIGNING_CERT }}
+          gpg-passphrase: SIGNING_PASS
+      - name: Release with Maven
+        env:
+          RELEASE_VERSION: ${{ github.event.milestone.title }}
+          MAVEN_USER: ${{ secrets.MAVEN_USER }}
+          MAVEN_PASS: ${{ secrets.MAVEN_PASS }}
+          SIGNING_PASS: ${{ secrets.SIGNING_PASS }}
+        run: mvn -B release:prepare release:perform -DreleaseVersion=$RELEASE_VERSION
