@@ -115,7 +115,12 @@ public final class LinuxUtils {
 
             try (BufferedReader outputReader = new BufferedReader(new InputStreamReader(process.getInputStream(), UTF_8))) {
                 if (process.exitValue() == 0 && !"0".equals(outputReader.readLine())) {
-                    return true;
+                    builder.command("unshare", "-U", "id", "-un");
+                    Process nameprocess = builder.start();
+                    nameprocess.waitFor();
+                    if (nameprocess.exitValue() == 0) {
+                        return true;
+                    }
                 }
             }
 
