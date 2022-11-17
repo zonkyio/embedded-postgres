@@ -19,8 +19,11 @@ import liquibase.database.Database;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
+import liquibase.resource.FileSystemResourceAccessor;
+import liquibase.resource.ResourceAccessor;
 
 import javax.sql.DataSource;
+import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Objects;
@@ -30,45 +33,60 @@ import static liquibase.database.DatabaseFactory.getInstance;
 public final class LiquibasePreparer implements DatabasePreparer {
 
     private final String location;
+    private final ResourceAccessor accessor;
     private final Contexts contexts;
 
     public static LiquibasePreparer forClasspathLocation(String location) {
-        return new LiquibasePreparer(location, new Contexts());
-    }
-    public static LiquibasePreparer forClasspathLocation(String location, Contexts contexts) {
-        return new LiquibasePreparer(location, contexts);
+        return forClasspathLocation(location, null);
     }
 
-    private LiquibasePreparer(String location, Contexts contexts) {
+    public static LiquibasePreparer forClasspathLocation(String location, Contexts contexts) {
+        return new LiquibasePreparer(location, new ClassLoaderResourceAccessor(), contexts);
+    }
+    
+    public static LiquibasePreparer forFile(File file) {
+        return forFile(file, null);
+    }
+
+    public static LiquibasePreparer forFile(File file, Contexts contexts) {
+        if (file == null)
+            throw new IllegalArgumentException("Missing file");
+        File dir = file.getParentFile();
+        if (dir == null)
+            throw new IllegalArgumentException("Cannot get parent dir from file");
+
+        return new LiquibasePreparer(file.getName(), new FileSystemResourceAccessor(dir), contexts);
+    }
+
+    private LiquibasePreparer(String location, ResourceAccessor accessor, Contexts contexts) {
         this.location = location;
-        this.contexts = contexts;
+        this.accessor = accessor;
+        this.contexts = contexts != null ? contexts : new Contexts();
     }
 
     @Override
     public void prepare(DataSource ds) throws SQLException {
-        Connection connection = null;
-        try {
-            connection = ds.getConnection();
+        try (Connection connection = ds.getConnection()) {
             Database database = getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
-            Liquibase liquibase = new Liquibase(location, new ClassLoaderResourceAccessor(), database);
+            Liquibase liquibase = new Liquibase(location, accessor, database);
             liquibase.update(contexts);
         } catch (LiquibaseException e) {
             throw new SQLException(e);
-        } finally {
-            if (connection != null) {
-                connection.rollback();
-                connection.close();
-            }
         }
     }
 
     @Override
-    public boolean equals(Object obj) {
-        return obj instanceof LiquibasePreparer && Objects.equals(location, ((LiquibasePreparer) obj).location);
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        LiquibasePreparer that = (LiquibasePreparer) o;
+        return Objects.equals(location, that.location)
+                && Objects.equals(accessor, that.accessor)
+                && Objects.equals(contexts.getContexts(), that.contexts.getContexts());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(location);
+        return Objects.hash(location, accessor, contexts.getContexts());
     }
 }

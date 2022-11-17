@@ -23,7 +23,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
 
-public class LiquibasePreparerTest {
+public class LiquibasePreparerClasspathTest {
 
     @Rule
     public PreparedDbRule db = EmbeddedPostgresRules.preparedDatabase(LiquibasePreparer.forClasspathLocation("liqui/master.xml"));

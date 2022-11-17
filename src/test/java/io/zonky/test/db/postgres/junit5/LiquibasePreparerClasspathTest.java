@@ -23,7 +23,7 @@ import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class LiquibasePreparerTest {
+public class LiquibasePreparerClasspathTest {
 
     @RegisterExtension
     public PreparedDbExtension db = EmbeddedPostgresExtension.preparedDatabase(LiquibasePreparer.forClasspathLocation("liqui/master.xml"));
