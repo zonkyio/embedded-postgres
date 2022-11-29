@@ -17,7 +17,7 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
-    <include file="liqui/master.xml"/>
+    <include file="master.xml" relativeToChangelogFile="true" />
 
     <changeSet id="deleteAll" author="foo.bar" context="test">
         <comment>Delete from `foo` table</comment>

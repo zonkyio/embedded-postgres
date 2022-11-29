@@ -11,31 +11,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.zonky.test.db.postgres.junit5;
+package io.zonky.test.db.postgres.junit;
 
 import io.zonky.test.db.postgres.embedded.LiquibasePreparer;
-import liquibase.Contexts;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.Rule;
+import org.junit.Test;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 
-public class LiquibasePreparerContextTest {
+public class LiquibasePreparerFileTest {
 
-    @RegisterExtension
-    public PreparedDbExtension db = EmbeddedPostgresExtension.preparedDatabase(LiquibasePreparer.forClasspathLocation("liqui/master-test.xml", new Contexts("test")));
+    @Rule
+    public PreparedDbRule db = EmbeddedPostgresRules.preparedDatabase(LiquibasePreparer.forFile(new File("src/test/resources/liqui/master.xml")));
 
     @Test
-    public void testEmptyTables() throws Exception {
+    public void testTablesMade() throws Exception {
         try (Connection c = db.getTestDatabase().getConnection();
-             Statement s = c.createStatement()) {
-            ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM foo");
+                Statement s = c.createStatement()) {
+            ResultSet rs = s.executeQuery("SELECT * FROM foo");
             rs.next();
-            assertEquals(0, rs.getInt(1));
+            assertEquals("bar", rs.getString(1));
         }
     }
 }
