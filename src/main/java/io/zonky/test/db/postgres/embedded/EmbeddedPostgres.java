@@ -13,6 +13,21 @@
  */
 package io.zonky.test.db.postgres.embedded;
 
+import io.zonky.test.db.postgres.util.LinuxUtils;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang3.time.StopWatch;
+import org.postgresql.ds.PGSimpleDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.tukaani.xz.XZInputStream;
+
+import javax.sql.DataSource;
 import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.File;
@@ -57,23 +72,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
-
-import javax.sql.DataSource;
-
-import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.commons.lang3.SystemUtils;
-import org.apache.commons.lang3.time.StopWatch;
-import org.postgresql.ds.PGSimpleDataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.tukaani.xz.XZInputStream;
-
-import io.zonky.test.db.postgres.util.LinuxUtils;
 
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -262,11 +260,14 @@ public class EmbeddedPostgres implements Closeable
         }
 
         final List<String> args = new ArrayList<>();
-        args.addAll(Arrays.asList("-D", dataDirectory.getPath()));
-        args.addAll(createInitOptions());
+        args.addAll(Arrays.asList(
+                "-D", dataDirectory.getPath(),
+                "-o", String.join(" ", createInitOptions()),
+                "-w", "start"
+        ));
 
         final ProcessBuilder builder = new ProcessBuilder();
-        POSTGRES.applyTo(builder, args);
+        PG_CTL.applyTo(builder, args);
 
         builder.redirectErrorStream(true);
         builder.redirectError(errorRedirector);
