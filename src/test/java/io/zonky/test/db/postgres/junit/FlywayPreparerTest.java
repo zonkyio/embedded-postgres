@@ -18,6 +18,7 @@ import static org.junit.Assert.assertEquals;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Collections;
 
 import io.zonky.test.db.postgres.embedded.FlywayPreparer;
 import org.junit.Rule;
@@ -25,7 +26,8 @@ import org.junit.Test;
 
 public class FlywayPreparerTest {
     @Rule
-    public PreparedDbRule db = EmbeddedPostgresRules.preparedDatabase(FlywayPreparer.forClasspathLocation("db/testing"));
+    public PreparedDbRule db = EmbeddedPostgresRules.preparedDatabase(FlywayPreparer.fromConfiguration(
+            Collections.singletonMap("flyway.locations", "db/testing")));
 
     @Test
     public void testTablesMade() throws Exception {

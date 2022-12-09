@@ -13,34 +13,53 @@
  */
 package io.zonky.test.db.postgres.embedded;
 
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-
-import javax.sql.DataSource;
-
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.configuration.FluentConfiguration;
 
-// TODO: Detect missing migration files.
-// cf. https://github.com/flyway/flyway/issues/1496
-// There is also a related @Ignored test in otj-sql.
+import javax.sql.DataSource;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public final class FlywayPreparer implements DatabasePreparer {
 
     private final FluentConfiguration configuration;
     private final List<String> locations;
+    private final Map<String, String> properties;
 
+    /**
+     * Creates a new instance of the preparer with the specified locations of migrations.
+     */
     public static FlywayPreparer forClasspathLocation(String... locations) {
         FluentConfiguration config = Flyway.configure().locations(locations);
-        return new FlywayPreparer(config, Arrays.asList(locations));
+        return new FlywayPreparer(config, Arrays.asList(locations), null);
     }
 
-    private FlywayPreparer(FluentConfiguration configuration, List<String> locations) {
+    /**
+     * Creates a new instance of the preparer with the specified configuration properties.
+     *
+     * <p>Example of use:
+     * <pre> {@code
+     *     FlywayPreparer preparer = FlywayPreparer.fromConfiguration(Map.of(
+     *             "flyway.locations", "db/migration",
+     *             "flyway.postgresql.transactional.lock", "false"));
+     * }</pre>
+     *
+     * A list of all available configuration properties can be found <a href='https://flywaydb.org/documentation/configuration/configfile.html'>here</a>.
+     */
+    public static FlywayPreparer fromConfiguration(Map<String, String> configuration) {
+        FluentConfiguration config = Flyway.configure().configuration(configuration);
+        return new FlywayPreparer(config, null, new HashMap<>(configuration));
+    }
+
+    private FlywayPreparer(FluentConfiguration configuration, List<String> locations, Map<String, String> properties) {
         this.configuration = configuration;
         this.locations = locations;
+        this.properties = properties;
     }
 
     @Override
@@ -55,15 +74,15 @@ public final class FlywayPreparer implements DatabasePreparer {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (! (obj instanceof FlywayPreparer)) {
-            return false;
-        }
-        return Objects.equals(locations, ((FlywayPreparer) obj).locations);
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        FlywayPreparer that = (FlywayPreparer) o;
+        return Objects.equals(locations, that.locations) && Objects.equals(properties, that.properties);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(locations);
+        return Objects.hash(locations, properties);
     }
 }
