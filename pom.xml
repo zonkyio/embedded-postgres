@@ -30,7 +30,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <embedded-postgres-binaries.version>14.7.0</embedded-postgres-binaries.version>
+        <embedded-postgres-binaries.version>14.8.0</embedded-postgres-binaries.version>
     </properties>
 
     <url>https://github.com/zonkyio/embedded-postgres</url>

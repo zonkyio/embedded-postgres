@@ -24,12 +24,12 @@ Add the following Maven dependency:
 <dependency>
     <groupId>io.zonky.test</groupId>
     <artifactId>embedded-postgres</artifactId>
-    <version>2.0.3</version>
+    <version>2.0.4</version>
     <scope>test</scope>
 </dependency>
 ```
 
-The default version of the embedded postgres is `PostgreSQL 14.7`, but you can change it by following the instructions described in [Postgres version](#postgres-version).
+The default version of the embedded postgres is `PostgreSQL 14.8`, but you can change it by following the instructions described in [Postgres version](#postgres-version).
 
 ## Basic Usage
 
@@ -71,7 +71,7 @@ independent databases gives you.
 
 ## Postgres version
 
-The default version of the embedded postgres is `PostgreSQL 14.7`, but it can be changed by importing `embedded-postgres-binaries-bom` in a required version into your dependency management section.
+The default version of the embedded postgres is `PostgreSQL 14.8`, but it can be changed by importing `embedded-postgres-binaries-bom` in a required version into your dependency management section.
 
 ```xml
 <dependencyManagement>
@@ -79,7 +79,7 @@ The default version of the embedded postgres is `PostgreSQL 14.7`, but it can be
         <dependency>
             <groupId>io.zonky.test.postgres</groupId>
             <artifactId>embedded-postgres-binaries-bom</artifactId>
-            <version>15.2.0</version>
+            <version>15.3.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -97,7 +97,7 @@ The default version of the embedded postgres is `PostgreSQL 14.7`, but it can be
          configurations.all {
               resolutionStrategy.eachDependency { DependencyResolveDetails details ->
                   if (details.requested.group == 'io.zonky.test.postgres') {
-                     details.useVersion '15.2.0'
+                     details.useVersion '15.3.0'
                  }
              }
          }
@@ -105,7 +105,7 @@ The default version of the embedded postgres is `PostgreSQL 14.7`, but it can be
   2. If you use Gradle 5+, [Maven BOMs are supported out of the box](https://docs.gradle.org/5.0/userguide/managing_transitive_dependencies.html#sec:bom_import), so you can import the bom:
   
          dependencies {
-              implementation enforcedPlatform('io.zonky.test.postgres:embedded-postgres-binaries-bom:15.2.0')
+              implementation enforcedPlatform('io.zonky.test.postgres:embedded-postgres-binaries-bom:15.3.0')
          }
   
   3. Or, you can use [Spring's dependency management plugin](https://docs.spring.io/dependency-management-plugin/docs/current/reference/html/#dependency-management-configuration-bom-import) that provides Maven-like dependency management to Gradle:
@@ -116,7 +116,7 @@ The default version of the embedded postgres is `PostgreSQL 14.7`, but it can be
          
          dependencyManagement {
               imports {
-                   mavenBom 'io.zonky.test.postgres:embedded-postgres-binaries-bom:15.2.0'
+                   mavenBom 'io.zonky.test.postgres:embedded-postgres-binaries-bom:15.3.0'
               }
          }
 
