@@ -105,7 +105,7 @@ The default version of the embedded postgres is `PostgreSQL 14.8`, but it can be
   2. If you use Gradle 5+, [Maven BOMs are supported out of the box](https://docs.gradle.org/5.0/userguide/managing_transitive_dependencies.html#sec:bom_import), so you can import the bom:
   
          dependencies {
-              implementation enforcedPlatform('io.zonky.test.postgres:embedded-postgres-binaries-bom:15.3.0')
+              testImplementation enforcedPlatform('io.zonky.test.postgres:embedded-postgres-binaries-bom:15.3.0')
          }
   
   3. Or, you can use [Spring's dependency management plugin](https://docs.spring.io/dependency-management-plugin/docs/current/reference/html/#dependency-management-configuration-bom-import) that provides Maven-like dependency management to Gradle:
