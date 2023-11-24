@@ -63,12 +63,13 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
             return resource.getInputStream();
         }
 
-        if (StringUtils.equals(system, "Darwin") && StringUtils.equals(machineHardware, "aarch64")) {
+        if ((StringUtils.equals(system, "Darwin") && StringUtils.equals(machineHardware, "aarch64"))
+                || (StringUtils.equals(system, "Windows") && StringUtils.equals(architecture, "arm_64"))) {
             resource = findPgBinary(normalize(format("postgres-%s-%s.txz", system, "x86_64")));
             if (resource != null) {
-                logger.warn("No native binaries supporting aarch64 architecture found. " +
-                        "Trying to use binaries for amd64 architecture instead: '{}'. " +
-                        "Make sure you have Rosetta 2 emulation enabled. " +
+                logger.warn("No native binaries supporting ARM architecture found. " +
+                        "Trying to use binaries for x64 architecture instead: '{}'. " +
+                        "Make sure you have enabled emulation for this purpose. " +
                         "Note that performance may be degraded.", resource.getFilename());
                 return resource.getInputStream();
             }
