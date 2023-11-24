@@ -63,8 +63,8 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
             return resource.getInputStream();
         }
 
-        if ((StringUtils.equals(system, "Darwin") && StringUtils.equals(machineHardware, "aarch64"))
-                || (StringUtils.equals(system, "Windows") && StringUtils.equals(architecture, "arm_64"))) {
+        if ((StringUtils.equals(system, "Darwin") && StringUtils.equals(machineHardware, "aarch64"))        // NOPMD
+                || (StringUtils.equals(system, "Windows") && StringUtils.equals(architecture, "arm_64"))) { // NOPMD
             resource = findPgBinary(normalize(format("postgres-%s-%s.txz", system, "x86_64")));
             if (resource != null) {
                 logger.warn("No native binaries supporting ARM architecture found. " +
