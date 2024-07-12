@@ -12,7 +12,7 @@ detect_linux_distribution() {
     else
         DISTRO=''
     fi
-    echo $DISTRO
+    echo "$DISTRO"
 }
 
-echo $(detect_linux_distribution)
+detect_linux_distribution

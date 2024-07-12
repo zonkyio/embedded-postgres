@@ -6,10 +6,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [8, 11, 13, 15, 17, 18, 19]
+        java: [8, 11, 17, 21, 22] # LTS and newer versions
     steps:
     - name: Checkout project
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Set up JDK
       uses: actions/setup-java@v4
       with:
