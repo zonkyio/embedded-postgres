@@ -258,6 +258,12 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <environmentVariables>
+                        <LC_ALL>${env.LC_ALL}</LC_ALL><!-- needed by initdb -->
+                    </environmentVariables>
+                    <forkCount>1C</forkCount>
+                </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-pmd-plugin</artifactId>
@@ -336,6 +342,21 @@
     </build>
 
     <profiles>
+        <!-- prevent "initdb: error: invalid locale settings; check LANG and LC_* environment variables" -->
+        <profile>
+            <id>default-lc-all</id>
+            <activation>
+                <property>
+                    <name>!env.LC_ALL</name><!-- if LC_ALL is missing -->
+                </property>
+                <os>
+                    <family>Unix</family>
+                </os>
+            </activation>
+            <properties>
+                <env.LC_ALL>en_US.UTF-8</env.LC_ALL><!-- set default -->
+            </properties>
+        </profile>
         <profile>
             <id>release</id>
             <build>
