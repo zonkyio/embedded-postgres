@@ -31,6 +31,26 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <embedded-postgres-binaries.version>14.11.0</embedded-postgres-binaries.version>
+        <commons-codec.version>1.17.0</commons-codec.version>
+        <commons-compress.version>1.26.2</commons-compress.version>
+        <commons-io.version>2.16.1</commons-io.version>
+        <commons-lang3.version>3.14.0</commons-lang3.version>
+        <flyway.version>7.15.0</flyway.version>
+        <junit5.version>5.10.3</junit5.version>
+        <junit4.version>4.13.2</junit4.version>
+        <liquibase.version>4.28.0</liquibase.version>
+        <mockito.version>4.11.0</mockito.version>
+        <pmd.version>7.3.0</pmd.version>
+        <postgresql.version>42.7.3</postgresql.version>
+        <slf4j.version>2.0.13</slf4j.version>
+        <xz.version>1.9</xz.version>
+        <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+        <maven-gpg-plugin.version>1.6</maven-gpg-plugin.version>
+        <maven-javadoc-plugin.version>3.7.0</maven-javadoc-plugin.version>
+        <maven-pmd-plugin.version>3.23.0</maven-pmd-plugin.version>
+        <maven-release-plugin.version>3.1.0</maven-release-plugin.version>
+        <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+        <maven-surefire-plugin.version>3.3.1</maven-surefire-plugin.version>
     </properties>
 
     <url>https://github.com/zonkyio/embedded-postgres</url>
@@ -76,34 +96,34 @@
             <dependency>
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
-                <version>2.16.1</version>
+                <version>${commons-io.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
-                <version>3.14.0</version>
+                <version>${commons-lang3.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
-                <version>1.26.2</version>
+                <version>${commons-compress.version}</version>
             </dependency>
             <dependency>
                 <groupId>commons-codec</groupId>
                 <artifactId>commons-codec</artifactId>
-                <version>1.17.0</version>
+                <version>${commons-codec.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
-                <version>5.10.3</version>
+                <version>${junit5.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-bom</artifactId>
-                <version>2.0.13</version>
+                <version>${slf4j.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -150,7 +170,7 @@
         <dependency>
             <groupId>org.tukaani</groupId>
             <artifactId>xz</artifactId>
-            <version>1.9</version>
+            <version>${xz.version}</version>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>
@@ -163,24 +183,24 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>7.15.0</version>
+            <version>${flyway.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
-            <version>4.28.0</version>
+            <version>${liquibase.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.7.3</version>
+            <version>${postgresql.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.2</version>
+            <version>${junit4.version}</version>
             <scope>provided</scope>
             <optional>true</optional>
         </dependency>
@@ -209,7 +229,7 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>4.11.0</version><!-- last Java 8 version -->
+            <version>${mockito.version}</version><!-- last Java 8 version -->
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -219,7 +239,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>${maven-enforcer-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>enforce-versions</id>
@@ -237,11 +257,11 @@
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>${maven-surefire-plugin.version}</version>
             </plugin>
             <plugin>
                 <artifactId>maven-pmd-plugin</artifactId>
-                <version>3.23.0</version>
+                <version>${maven-pmd-plugin.version}</version>
                 <executions>
                     <execution>
                         <phase>verify</phase>
@@ -254,13 +274,13 @@
                     <dependency>
                         <groupId>net.sourceforge.pmd</groupId>
                         <artifactId>pmd-core</artifactId>
-                        <version>7.3.0</version>
+                        <version>${pmd.version}</version>
                         <scope>compile</scope>
                     </dependency>
                     <dependency>
                         <groupId>net.sourceforge.pmd</groupId>
                         <artifactId>pmd-java</artifactId>
-                        <version>7.3.0</version>
+                        <version>${pmd.version}</version>
                         <scope>compile</scope>
                     </dependency>
                 </dependencies>
@@ -276,7 +296,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>${maven-source-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -289,7 +309,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.7.0</version>
+                <version>${maven-javadoc-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -305,7 +325,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>${maven-release-plugin.version}</version>
                 <configuration>
                     <useReleaseProfile>false</useReleaseProfile>
                     <releaseProfiles>release</releaseProfiles>
@@ -323,7 +343,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
+                        <version>${maven-gpg-plugin.version}</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
