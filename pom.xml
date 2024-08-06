@@ -262,7 +262,6 @@
                     <environmentVariables>
                         <LC_ALL>${env.LC_ALL}</LC_ALL><!-- needed by initdb -->
                     </environmentVariables>
-                    <forkCount>1C</forkCount>
                 </configuration>
             </plugin>
             <plugin>
