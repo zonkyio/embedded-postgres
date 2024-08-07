@@ -35,7 +35,7 @@
         <commons-compress.version>1.26.2</commons-compress.version>
         <commons-io.version>2.16.1</commons-io.version>
         <commons-lang3.version>3.15.0</commons-lang3.version>
-        <flyway.version>7.15.0</flyway.version>
+        <flyway.version>9.22.3</flyway.version>
         <junit5.version>5.10.3</junit5.version>
         <junit4.version>4.13.2</junit4.version>
         <liquibase.version>4.29.1</liquibase.version>
