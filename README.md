@@ -2,7 +2,9 @@
 
 ## Introduction
 
-This project is a fork of [OpenTable Embedded PostgreSQL Component](https://github.com/opentable/otj-pg-embedded) created due to inactivity of maintainers.
+This project is a fork of [OpenTable Embedded PostgreSQL Component](https://github.com/opentable/otj-pg-embedded) created back in 2018. The original
+project continues, but with a very different philosophy - wrapping the postgres instance in a docker container. This project is focused on running the postgres instance directly in the same JVM as the tests.
+There are [pros and cons](https://github.com/opentable/otj-pg-embedded/blob/master/README.md#recent-changes-and-the-reasons-behind-them) to both approaches discussed in their README.
 
 The library allows embedding PostgreSQL into Java application code with no external dependencies.
 Excellent for allowing you to unit test with a "real" Postgres without requiring end users to install and set up a database cluster.
