@@ -220,7 +220,7 @@ public class EmbeddedPostgres implements Closeable
     private static int detectPort() throws IOException
     {
         try (ServerSocket socket = new ServerSocket(0)) {
-            while(!socket.isBound()) {
+            while (!socket.isBound()) {
                 Thread.sleep(50);
             }
             return socket.getLocalPort();
@@ -803,23 +803,19 @@ public class EmbeddedPostgres implements Closeable
                 mkdirs(pgDir);
                 workingDirectory.setWritable(true, false);
 
-                final File unpackLockFile = new File(pgDir, LOCK_FILE_NAME);
                 final File pgDirExists = new File(pgDir, ".exists");
 
                 if (!isPgBinReady(pgDirExists)) {
+                    File unpackLockFile = new File(pgDir, LOCK_FILE_NAME);
                     try (FileOutputStream lockStream = new FileOutputStream(unpackLockFile);
                          FileLock unpackLock = lockStream.getChannel().tryLock()) {
                         if (unpackLock != null) {
-                            try {
-                                LOG.info("Extracting Postgres...");
-                                try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray())) {
-                                    extractTxz(bais, pgDir);
-                                }
-                                if (!pgDirExists.createNewFile()) {
-                                    pgDirExists.setLastModified(System.currentTimeMillis());
-                                }
-                            } catch (Exception e) {
-                                LOG.error("while unpacking Postgres", e);
+                            LOG.info("Extracting Postgres...");
+                            try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray())) {
+                                extractTxz(bais, pgDir);
+                            }
+                            if (!pgDirExists.createNewFile()) {
+                                pgDirExists.setLastModified(System.currentTimeMillis());
                             }
                         } else {
                             // the other guy is unpacking for us.
@@ -838,6 +834,7 @@ public class EmbeddedPostgres implements Closeable
                     }
                 }
             } catch (final IOException | NoSuchAlgorithmException e) {
+                LOG.error("Got error while unpacking Postgres", e);
                 throw new ExceptionInInitializerError(e);
             } catch (final InterruptedException ie) {
                 Thread.currentThread().interrupt();
