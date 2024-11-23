@@ -36,12 +36,12 @@
         <commons-io.version>2.16.1</commons-io.version>
         <commons-lang3.version>3.15.0</commons-lang3.version>
         <flyway.version>9.22.3</flyway.version>
-        <junit5.version>5.10.3</junit5.version>
+        <junit5.version>5.10.5</junit5.version>
         <junit4.version>4.13.2</junit4.version>
-        <liquibase.version>4.29.1</liquibase.version>
+        <liquibase.version>4.30.0</liquibase.version>
         <mockito.version>4.11.0</mockito.version>
         <pmd.version>7.4.0</pmd.version>
-        <postgresql.version>42.7.3</postgresql.version>
+        <postgresql.version>42.7.4</postgresql.version>
         <slf4j.version>1.7.36</slf4j.version>
         <xz.version>1.10</xz.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
