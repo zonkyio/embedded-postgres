@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -47,10 +48,18 @@ public class EmbeddedPostgresTest
     @Test
     public void testEmbeddedPgCreationWithNestedDataDirectory() throws Exception
     {
+        AtomicBoolean called = new AtomicBoolean(false);
+        Path dataDir = Files.createDirectories(tf.resolve("data-dir-parent").resolve("data-dir"));
         try (EmbeddedPostgres pg = EmbeddedPostgres.builder()
-                .setDataDirectory(Files.createDirectories(tf.resolve("data-dir-parent").resolve("data-dir")))
+                .setDataDirectory(dataDir)
+                .setDataDirectoryCustomizer(dd -> {
+                    called.set(true);
+                    assertEquals(dataDir, dd.toPath());
+                    assertTrue(Files.isRegularFile(dd.toPath().resolve("pg_hba.conf")));
+                })
                 .start()) {
             // nothing to do
         }
+        assertTrue(called.get());
     }
 }
