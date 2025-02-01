@@ -71,6 +71,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -114,14 +115,14 @@ public class EmbeddedPostgres implements Closeable
         PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector) throws IOException
     {
         this(parentDirectory, dataDirectory, cleanDataDirectory, postgresConfig, localeConfig, port, connectConfig,
-                pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT, null);
+                pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT, null, null);
     }
 
     EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
                      Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
                      PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector,
                      ProcessBuilder.Redirect outputRedirector, Duration pgStartupWait,
-                     File overrideWorkingDirectory) throws IOException
+                     File overrideWorkingDirectory, Consumer<File> dataDirectoryCustomizer) throws IOException
     {
         this.cleanDataDirectory = cleanDataDirectory;
         this.postgresConfig = new HashMap<>(postgresConfig);
@@ -158,6 +159,11 @@ public class EmbeddedPostgres implements Closeable
         }
 
         lock();
+
+        if (dataDirectoryCustomizer != null) {
+            dataDirectoryCustomizer.accept(dataDirectory);
+        }
+
         startPostmaster();
     }
 
@@ -495,6 +501,7 @@ public class EmbeddedPostgres implements Closeable
         private final Map<String, String> connectConfig = new HashMap<>();
         private PgBinaryResolver pgBinaryResolver = DefaultPostgresBinaryResolver.INSTANCE;
         private Duration pgStartupWait = DEFAULT_PG_STARTUP_WAIT;
+        private Consumer<File> dataDirectoryCustomizer;
 
         private ProcessBuilder.Redirect errRedirector = ProcessBuilder.Redirect.PIPE;
         private ProcessBuilder.Redirect outRedirector = ProcessBuilder.Redirect.PIPE;
@@ -573,6 +580,11 @@ public class EmbeddedPostgres implements Closeable
             return this;
         }
 
+        public Builder setDataDirectoryCustomizer(final Consumer<File> dataDirectoryCustomizer) {
+            this.dataDirectoryCustomizer = dataDirectoryCustomizer;
+            return this;
+        }
+
         public EmbeddedPostgres start() throws IOException {
             if (builderPort == 0)
             {
@@ -583,7 +595,7 @@ public class EmbeddedPostgres implements Closeable
             }
             return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, config,
                     localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector,
-                    pgStartupWait, overrideWorkingDirectory);
+                    pgStartupWait, overrideWorkingDirectory, dataDirectoryCustomizer);
         }
 
         @Override
