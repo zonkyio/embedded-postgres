@@ -101,6 +101,7 @@ public class EmbeddedPostgres implements Closeable
     private final Map<String, String> postgresConfig;
     private final Map<String, String> localeConfig;
     private final Map<String, String> connectConfig;
+    private final Map<String, String> environmentVariables;
 
     private volatile FileOutputStream lockStream;
     private volatile FileLock lock;
@@ -111,14 +112,15 @@ public class EmbeddedPostgres implements Closeable
 
     EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
         Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
-        PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector) throws IOException
+        Map<String, String> environmentVariables, PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector) throws IOException
     {
-        this(parentDirectory, dataDirectory, cleanDataDirectory, postgresConfig, localeConfig, port, connectConfig,
+        this(parentDirectory, dataDirectory, cleanDataDirectory, postgresConfig, localeConfig, port, connectConfig, environmentVariables,
                 pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT, null);
     }
 
     EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
                      Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
+                     Map<String, String> environmentVariables,
                      PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector,
                      ProcessBuilder.Redirect outputRedirector, Duration pgStartupWait,
                      File overrideWorkingDirectory) throws IOException
@@ -127,6 +129,7 @@ public class EmbeddedPostgres implements Closeable
         this.postgresConfig = new HashMap<>(postgresConfig);
         this.localeConfig = new HashMap<>(localeConfig);
         this.connectConfig = new HashMap<>(connectConfig);
+        this.environmentVariables = new HashMap<>(environmentVariables);
         this.port = port;
         this.pgDir = prepareBinaries(pgBinaryResolver, overrideWorkingDirectory);
         this.errorRedirector = errorRedirector;
@@ -490,6 +493,7 @@ public class EmbeddedPostgres implements Closeable
         private File builderDataDirectory;
         private final Map<String, String> config = new HashMap<>();
         private final Map<String, String> localeConfig = new HashMap<>();
+        private final Map<String, String> environmentVariables = new HashMap<>();
         private boolean builderCleanDataDirectory = true;
         private int builderPort = 0;
         private final Map<String, String> connectConfig = new HashMap<>();
@@ -546,6 +550,11 @@ public class EmbeddedPostgres implements Closeable
             connectConfig.put(key, value);
             return this;
         }
+        
+        public Builder setEnvironmentVariable(String key, String value) {
+            environmentVariables.put(key, value);
+            return this;
+        }
 
         public Builder setOverrideWorkingDirectory(File workingDirectory) {
             overrideWorkingDirectory = workingDirectory;
@@ -582,7 +591,7 @@ public class EmbeddedPostgres implements Closeable
                 builderDataDirectory = Files.createTempDirectory("epg").toFile();
             }
             return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, config,
-                    localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector,
+                    localeConfig, builderPort, connectConfig, environmentVariables, pgBinaryResolver, errRedirector, outRedirector,
                     pgStartupWait, overrideWorkingDirectory);
         }
 
@@ -602,6 +611,7 @@ public class EmbeddedPostgres implements Closeable
                     Objects.equals(config, builder.config) &&
                     Objects.equals(localeConfig, builder.localeConfig) &&
                     Objects.equals(connectConfig, builder.connectConfig) &&
+                    Objects.equals(environmentVariables, builder.environmentVariables) &&
                     Objects.equals(pgBinaryResolver, builder.pgBinaryResolver) &&
                     Objects.equals(pgStartupWait, builder.pgStartupWait) &&
                     Objects.equals(errRedirector, builder.errRedirector) &&
@@ -610,7 +620,7 @@ public class EmbeddedPostgres implements Closeable
 
         @Override
         public int hashCode() {
-            return Objects.hash(parentDirectory, builderDataDirectory, config, localeConfig, builderCleanDataDirectory, builderPort, connectConfig, pgBinaryResolver, pgStartupWait, errRedirector, outRedirector);
+            return Objects.hash(parentDirectory, builderDataDirectory, config, localeConfig, builderCleanDataDirectory, builderPort, connectConfig, environmentVariables, pgBinaryResolver, pgStartupWait, errRedirector, outRedirector);
         }
     }
 
@@ -894,6 +904,8 @@ public class EmbeddedPostgres implements Closeable
             command.addAll(arguments);
 
             builder.command(command);
+            
+            builder.environment().putAll(environmentVariables);
         }
     }
 }
