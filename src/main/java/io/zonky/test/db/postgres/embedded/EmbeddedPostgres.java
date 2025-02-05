@@ -108,6 +108,7 @@ public class EmbeddedPostgres implements Closeable
 
     private final ProcessBuilder.Redirect errorRedirector;
     private final ProcessBuilder.Redirect outputRedirector;
+    private final Process process;
 
     EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
         Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
@@ -158,7 +159,11 @@ public class EmbeddedPostgres implements Closeable
         }
 
         lock();
-        startPostmaster();
+        this.process = startPostmaster();
+    }
+    
+    public Process getProcess() {
+    	return this.process;
     }
 
     public DataSource getTemplateDatabase()
@@ -251,7 +256,7 @@ public class EmbeddedPostgres implements Closeable
         LOG.info("{} initdb completed in {}", instanceId, watch);
     }
 
-    private void startPostmaster() throws IOException
+    private Process startPostmaster() throws IOException
     {
         final StopWatch watch = new StopWatch();
         watch.start();
@@ -283,6 +288,7 @@ public class EmbeddedPostgres implements Closeable
         Runtime.getRuntime().addShutdownHook(newCloserThread());
 
         waitForServerStartup(watch);
+        return postmaster;
     }
 
     private List<String> createInitOptions()
