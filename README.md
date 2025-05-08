@@ -212,5 +212,8 @@ Below are some examples of how to prepare a docker image running with a non-root
 
 </details>
 
+
+If the above do not resolve your error, verify that the correct locales are available in your container. For example, many variants of AlmaLinux:9 do not come with `glibc-langpack-en`. This will lead to misleading errors during `initdb`. Additionally, you can optionally set your locale with `setLocaleConfig()` when building your EmbeddedPostgres instance.
+
 ## License
 The project is released under version 2.0 of the [Apache License](http://www.apache.org/licenses/LICENSE-2.0.html).
