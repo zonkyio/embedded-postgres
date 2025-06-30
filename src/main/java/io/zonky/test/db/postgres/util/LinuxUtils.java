@@ -56,7 +56,7 @@ public final class LinuxUtils {
             try (InputStream source = LinuxUtils.class.getResourceAsStream("/sh/detect_linux_distribution.sh")) {
                 target = Files.createTempFile("detect_linux_distribution_", ".sh");
                 Files.copy(source, target, REPLACE_EXISTING);
-               target.toFile().deleteOnExit();
+                target.toFile().deleteOnExit();
             }
 
             ProcessBuilder builder = new ProcessBuilder();
