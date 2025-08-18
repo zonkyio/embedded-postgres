@@ -41,7 +41,7 @@
         <liquibase.version>4.30.0</liquibase.version>
         <mockito.version>4.11.0</mockito.version>
         <pmd.version>7.4.0</pmd.version>
-        <postgresql.version>42.7.4</postgresql.version>
+        <postgresql.version>42.7.7</postgresql.version>
         <slf4j.version>1.7.36</slf4j.version>
         <xz.version>1.10</xz.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
