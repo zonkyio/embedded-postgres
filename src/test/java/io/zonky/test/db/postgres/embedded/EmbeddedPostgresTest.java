@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -47,10 +49,28 @@ public class EmbeddedPostgresTest
     @Test
     public void testEmbeddedPgCreationWithNestedDataDirectory() throws Exception
     {
+        Path dataDir = Files.createDirectories(tf.resolve("data-dir-parent").resolve("data-dir"));
         try (EmbeddedPostgres pg = EmbeddedPostgres.builder()
-                .setDataDirectory(Files.createDirectories(tf.resolve("data-dir-parent").resolve("data-dir")))
+                .setDataDirectory(dataDir)
+                .setDataDirectoryCustomizer(dd -> {
+                    assertEquals(dataDir, dd.toPath());
+                    Path pgConfigFile = dd.toPath().resolve("postgresql.conf");
+                    assertTrue(Files.isRegularFile(pgConfigFile));
+                    try {
+                        String pgConfig = new String(Files.readAllBytes(pgConfigFile), StandardCharsets.UTF_8);
+                        pgConfig = pgConfig.replaceFirst("#?listen_addresses\\s*=\\s*'localhost'", "listen_addresses = '*'");
+                        Files.write(pgConfigFile, pgConfig.getBytes(StandardCharsets.UTF_8));
+                    } catch (IOException ioe) {
+                        throw new RuntimeException(ioe);
+                    }
+                })
                 .start()) {
-            // nothing to do
+            try (Connection connection = pg.getPostgresDatabase().getConnection()) {
+                Statement statement = connection.createStatement();
+                ResultSet rs = statement.executeQuery("SHOW listen_addresses;");
+                rs.next();
+                assertEquals("*", rs.getString(1));
+            }
         }
     }
 }
