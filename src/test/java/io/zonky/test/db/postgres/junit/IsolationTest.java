@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.junit;
+
+import org.junit.Rule;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import org.junit.Rule;
-import org.junit.Test;
-
-public class IsolationTest
-{
+public class IsolationTest {
     @Rule
     public SingleInstancePostgresRule pg1 = EmbeddedPostgresRules.singleInstance();
 
@@ -29,8 +31,7 @@ public class IsolationTest
     public SingleInstancePostgresRule pg2 = EmbeddedPostgresRules.singleInstance();
 
     @Test
-    public void testIsolation() throws Exception
-    {
+    public void testIsolation() throws Exception {
         try (Connection c = getConnection(pg1)) {
             makeTable(c);
             try (Connection c2 = getConnection(pg2)) {
@@ -39,14 +40,14 @@ public class IsolationTest
         }
     }
 
-    private void makeTable(Connection c) throws SQLException
-    {
-        Statement s = c.createStatement();
-        s.execute("CREATE TABLE public.foo (a INTEGER)");
+    @SuppressWarnings("SqlNoDataSourceInspection")
+    private void makeTable(Connection c) throws SQLException {
+        try (Statement s = c.createStatement()) {
+            s.execute("CREATE TABLE public.foo (a INTEGER)");
+        }
     }
 
-    private Connection getConnection(SingleInstancePostgresRule epg) throws SQLException
-    {
+    private Connection getConnection(SingleInstancePostgresRule epg) throws SQLException {
         return epg.getEmbeddedPostgres().getPostgresDatabase().getConnection();
     }
 }

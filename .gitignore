@@ -17,3 +17,7 @@ target/
 .project
 .settings
 dist/
+.gradle/
+build/
+out/
+classes/

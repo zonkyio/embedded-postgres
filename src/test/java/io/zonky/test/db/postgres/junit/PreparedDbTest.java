@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,24 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.junit;
-
-import static org.junit.Assert.assertEquals;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import javax.sql.DataSource;
 
 import io.zonky.test.db.postgres.embedded.ConnectionInfo;
 import io.zonky.test.db.postgres.embedded.DatabaseConnectionPreparer;
 import io.zonky.test.db.postgres.embedded.DatabasePreparer;
 import org.junit.Rule;
 import org.junit.Test;
+
+import javax.sql.DataSource;
+import java.sql.*;
+
+import static org.junit.Assert.assertEquals;
 
 public class PreparedDbTest {
 
@@ -42,6 +39,7 @@ public class PreparedDbTest {
     @Rule
     public PreparedDbRule dbB1 = EmbeddedPostgresRules.preparedDatabase(prepB);
 
+    @SuppressWarnings("SqlNoDataSourceInspection")
     @Test
     public void testDbs() throws Exception {
         try (Connection c = dbA1.getTestDatabase().getConnection();
@@ -49,8 +47,8 @@ public class PreparedDbTest {
             commonAssertion(stmt);
         }
         try (Connection c = dbA2.getTestDatabase().getConnection();
-                PreparedStatement stmt = c.prepareStatement("SELECT count(1) FROM a")) {
-            ResultSet rs = stmt.executeQuery();
+                PreparedStatement stmt = c.prepareStatement("SELECT count(1) FROM a");
+                ResultSet rs = stmt.executeQuery()) {
             rs.next();
             assertEquals(0, rs.getInt(1));
         }
@@ -60,11 +58,13 @@ public class PreparedDbTest {
         }
     }
 
+    @SuppressWarnings("SqlNoDataSourceInspection")
     private void commonAssertion(final Statement stmt) throws SQLException {
         stmt.execute("INSERT INTO a VALUES(1)");
-        ResultSet rs = stmt.executeQuery("SELECT COUNT(1) FROM a");
-        rs.next();
-        assertEquals(1, rs.getInt(1));
+        try (ResultSet rs = stmt.executeQuery("SELECT COUNT(1) FROM a")) {
+            rs.next();
+            assertEquals(1, rs.getInt(1));
+        }
     }
 
     @Test
@@ -80,7 +80,7 @@ public class PreparedDbTest {
     @Test
     public void testDbUri() throws Exception {
         try (Connection c = DriverManager.getConnection(dbA1.getDbProvider().createDatabase());
-             Statement stmt = c.createStatement()) {
+                Statement stmt = c.createStatement()) {
             commonAssertion(stmt);
         }
     }

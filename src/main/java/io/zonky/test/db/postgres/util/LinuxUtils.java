@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.util;
 
 import org.apache.commons.lang3.StringUtils;
@@ -25,6 +28,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -46,6 +50,7 @@ public final class LinuxUtils {
         return UNSHARE_AVAILABLE;
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     private static String resolveDistributionName() {
         if (!SystemUtils.IS_OS_LINUX) {
             return null;
@@ -55,7 +60,7 @@ public final class LinuxUtils {
             Path target;
             try (InputStream source = LinuxUtils.class.getResourceAsStream("/sh/detect_linux_distribution.sh")) {
                 target = Files.createTempFile("detect_linux_distribution_", ".sh");
-                Files.copy(source, target, REPLACE_EXISTING);
+                Files.copy(Objects.requireNonNull(source), target, REPLACE_EXISTING);
                 target.toFile().deleteOnExit();
             }
 
@@ -93,6 +98,7 @@ public final class LinuxUtils {
         }
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     private static boolean unshareAvailable() {
         if (!SystemUtils.IS_OS_LINUX) {
             return false;

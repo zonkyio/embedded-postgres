@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.embedded;
 
 import org.slf4j.Logger;
@@ -70,16 +73,17 @@ final class ProcessOutputLogger implements Runnable {
         t.start();
     }
 
+    @SuppressWarnings({"PMD.AvoidAccessibilityAlteration", "PMD.AvoidCatchingGenericException", "PMD.AvoidCatchingThrowable", "JavaLangInvokeHandleSignature"})
     private static String processId(Process process) {
         try { // java 9+
             return String.format("pid(%s)", MethodHandles.lookup().findVirtual(Process.class, "pid", MethodType.methodType(long.class)).invoke(process));
-        } catch (Throwable ignored) {} // NOPMD since MethodHandles.invoke throws Throwable
+        } catch (Throwable ignored) {}
 
         try { // openjdk / oraclejdk 8
             final Field pid = process.getClass().getDeclaredField("pid");
             pid.setAccessible(true);
             return String.format("pid(%s)", pid.getInt(process));
-        } catch (Exception ignored) {} // NOPMD
+        } catch (Exception ignored) {}
 
         return String.format("id(%s)", process.hashCode());
     }

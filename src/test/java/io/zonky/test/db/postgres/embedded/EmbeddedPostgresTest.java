@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.embedded;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -25,30 +27,28 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class EmbeddedPostgresTest
-{
+class EmbeddedPostgresTest {
     @TempDir
-    public Path tf;
+    Path tf;
 
+    @SuppressWarnings("SqlNoDataSourceInspection")
     @Test
-    public void testEmbeddedPg() throws Exception
-    {
+    void testEmbeddedPg() throws Exception {
         try (EmbeddedPostgres pg = EmbeddedPostgres.start();
-             Connection c = pg.getPostgresDatabase().getConnection()) {
-            Statement s = c.createStatement();
-            ResultSet rs = s.executeQuery("SELECT 1");
+                Connection c = pg.getPostgresDatabase().getConnection();
+                Statement s = c.createStatement();
+                ResultSet rs = s.executeQuery("SELECT 1")) {
             assertTrue(rs.next());
             assertEquals(1, rs.getInt(1));
             assertFalse(rs.next());
         }
     }
 
+    @SuppressWarnings("SqlNoDataSourceInspection")
     @Test
-    public void testEmbeddedPgCreationWithNestedDataDirectory() throws Exception
-    {
+    void testEmbeddedPgCreationWithNestedDataDirectory() throws Exception {
         Path dataDir = Files.createDirectories(tf.resolve("data-dir-parent").resolve("data-dir"));
         try (EmbeddedPostgres pg = EmbeddedPostgres.builder()
                 .setDataDirectory(dataDir)
@@ -65,9 +65,9 @@ public class EmbeddedPostgresTest
                     }
                 })
                 .start()) {
-            try (Connection connection = pg.getPostgresDatabase().getConnection()) {
-                Statement statement = connection.createStatement();
-                ResultSet rs = statement.executeQuery("SHOW listen_addresses;");
+            try (Connection connection = pg.getPostgresDatabase().getConnection();
+                    Statement statement = connection.createStatement();
+                    ResultSet rs = statement.executeQuery("SHOW listen_addresses;")) {
                 rs.next();
                 assertEquals("*", rs.getString(1));
             }

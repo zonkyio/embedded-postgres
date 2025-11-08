@@ -3,53 +3,49 @@ on:
   milestone:
     types: [closed]
 jobs:
-  build:
+  release:
     name: Release ${{ github.event.milestone.title }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: master
           fetch-depth: 0
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v5
       - name: Set up Git
         run: |
           git config user.name "Zonky Bot"
           git config user.email "bot@zonky.com"
-      - name: Set up JDK
-        uses: actions/setup-java@v4
+      - name: Set up JDK 8
+        uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
-          java-version: 8
-          server-id: ossrh
-          server-username: MAVEN_USER
-          server-password: MAVEN_PASS
-          gpg-private-key: ${{ secrets.SIGNING_CERT }}
-          gpg-passphrase: SIGNING_PASS
-      - name: Release with Maven
+          java-version: '8'
+          cache: 'gradle'
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+      - name: Publish to Maven Central via Gradle
         env:
           RELEASE_VERSION: ${{ github.event.milestone.title }}
-          MAVEN_USER: ${{ secrets.MAVEN_USER }}
-          MAVEN_PASS: ${{ secrets.MAVEN_PASS }}
-          SIGNING_PASS: ${{ secrets.SIGNING_PASS }}
-        run: mvn -B release:prepare release:perform -DreleaseVersion=$RELEASE_VERSION
-      - name: Upload staged artifacts to Central Sonatype
-        env:
-          SONATYPE_USERNAME: ${{ secrets.MAVEN_USER }}
-          SONATYPE_PASSWORD: ${{ secrets.MAVEN_PASS }}
+          # Gradle signing plugin (build.gradle.kts)
+          MAVEN_SIGNING_KEY: ${{ secrets.SIGNING_CERT }}
+          MAVEN_SIGNING_PASSPHRASE: ${{ secrets.SIGNING_PASS }}
+          # nmcp credentials (build.gradle.kts)
+          USERNAME_TOKEN: ${{ secrets.MAVEN_USER }}
+          PASSWORD_TOKEN: ${{ secrets.MAVEN_PASS }}
+        # Use the milestone title as the build's version without touching gradle.properties
         run: |
-          SONATYPE_TOKEN=$(printf "$SONATYPE_USERNAME:$SONATYPE_PASSWORD" | base64)
-          PUBLISH_NAMESPACE="io.zonky"
-          echo "Uploading artifacts from OSSRH-Staging to Central Sonatype..."
-          RESPONSE=$(curl -s -w "%{http_code}" -o response_body.txt -X POST \
-            -H "Authorization: Bearer $SONATYPE_TOKEN" \
-            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/$PUBLISH_NAMESPACE?publishing_type=user_managed")
-          if [ "$RESPONSE" -ne 200 ]; then
-            echo "Failed to upload artifacts to Central Sonatype. Response code: $RESPONSE. Response body: "
-            cat response_body.txt
-            echo "Visit https://central.sonatype.com/publishing/deployments for more information."
-            exit 1
-          else
-            echo "Artifacts were uploaded successfully to Central Sonatype."
-            echo "Visit https://central.sonatype.com/publishing/deployments to view your artifacts."
-          fi
+          ./gradlew \
+            -Pversion=$RELEASE_VERSION \
+            clean check publishAllPublicationsToCentralPortal \
+            --stacktrace
+      # Reproduces Maven Release Plugin’s v@{project.version} tag
+      - name: Tag release
+        if: success()
+        env:
+          RELEASE_VERSION: ${{ github.event.milestone.title }}
+        run: |
+          git tag "v$RELEASE_VERSION"
+          git push origin "v$RELEASE_VERSION"

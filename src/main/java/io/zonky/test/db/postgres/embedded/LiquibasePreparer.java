@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.embedded;
 
 import liquibase.Contexts;
@@ -19,11 +22,12 @@ import liquibase.database.Database;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.exception.LiquibaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
-import liquibase.resource.FileSystemResourceAccessor;
+import liquibase.resource.DirectoryResourceAccessor;
 import liquibase.resource.ResourceAccessor;
 
 import javax.sql.DataSource;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Objects;
@@ -55,7 +59,11 @@ public final class LiquibasePreparer implements DatabasePreparer {
         if (dir == null)
             throw new IllegalArgumentException("Cannot get parent dir from file");
 
-        return new LiquibasePreparer(file.getName(), new FileSystemResourceAccessor(dir), contexts);
+        try {
+            return new LiquibasePreparer(file.getName(), new DirectoryResourceAccessor(dir), contexts);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private LiquibasePreparer(String location, ResourceAccessor accessor, Contexts contexts) {
@@ -64,10 +72,11 @@ public final class LiquibasePreparer implements DatabasePreparer {
         this.contexts = contexts != null ? contexts : new Contexts();
     }
 
+    @SuppressWarnings("PMD.CloseResource")
     @Override
     public void prepare(DataSource ds) throws SQLException {
-        try (Connection connection = ds.getConnection()) {
-            Database database = getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection));
+        try (Connection connection = ds.getConnection();
+                Database database = getInstance().findCorrectDatabaseImplementation(new JdbcConnection(connection))) {
             Liquibase liquibase = new Liquibase(location, accessor, database);
             liquibase.update(contexts);
         } catch (LiquibaseException e) {

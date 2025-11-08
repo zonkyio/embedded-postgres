@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.util;
 
 import org.apache.commons.lang3.StringUtils;
@@ -21,6 +24,7 @@ public class ArchUtils {
 
     private ArchUtils() {}
 
+    @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
     public static String normalize(String archName) {
         if (StringUtils.isBlank(archName)) {
             throw new IllegalStateException("No architecture detected");
@@ -70,19 +74,17 @@ public class ArchUtils {
         if (arch.matches("^(ppcle|ppc32le)$")) {
             return "ppcle_32";
         }
-        if ("ppc64".equals(arch)) {
-            return "ppc_64";
+        switch (arch) {
+            case "ppc64":
+                return "ppc_64";
+            case "ppc64le":
+                return "ppcle_64";
+            case "s390":
+                return "s390_32";
+            case "s390x":
+                return "s390_64";
+            default:
+                throw new IllegalStateException("Unsupported architecture: " + archName);
         }
-        if ("ppc64le".equals(arch)) {
-            return "ppcle_64";
-        }
-        if ("s390".equals(arch)) {
-            return "s390_32";
-        }
-        if ("s390x".equals(arch)) {
-            return "s390_64";
-        }
-
-        throw new IllegalStateException("Unsupported architecture: " + archName);
     }
 }

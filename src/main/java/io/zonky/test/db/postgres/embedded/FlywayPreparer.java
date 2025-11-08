@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.embedded;
 
 import org.apache.commons.lang3.reflect.MethodUtils;
@@ -18,12 +21,7 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.configuration.FluentConfiguration;
 
 import javax.sql.DataSource;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public final class FlywayPreparer implements DatabasePreparer {
 
@@ -62,8 +60,9 @@ public final class FlywayPreparer implements DatabasePreparer {
         this.properties = properties;
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     @Override
-    public void prepare(DataSource ds) throws SQLException {
+    public void prepare(DataSource ds) {
         configuration.dataSource(ds);
         Flyway flyway = configuration.load();
         try {

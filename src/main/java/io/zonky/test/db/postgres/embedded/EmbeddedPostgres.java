@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.embedded;
 
 import io.zonky.test.db.postgres.util.LinuxUtils;
@@ -28,22 +31,13 @@ import org.slf4j.LoggerFactory;
 import org.tukaani.xz.XZInputStream;
 
 import javax.sql.DataSource;
-import java.io.ByteArrayInputStream;
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.nio.channels.AsynchronousFileChannel;
-import java.nio.channels.Channel;
-import java.nio.channels.CompletionHandler;
-import java.nio.channels.FileLock;
-import java.nio.channels.OverlappingFileLockException;
+import java.nio.channels.*;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,17 +49,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -79,8 +64,7 @@ import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Collections.unmodifiableMap;
 
 @SuppressWarnings("PMD.AvoidDuplicateLiterals") // "postgres"
-public class EmbeddedPostgres implements Closeable
-{
+public class EmbeddedPostgres implements Closeable {
     private static final Logger LOG = LoggerFactory.getLogger(EmbeddedPostgres.class);
     private static final String JDBC_FORMAT = "jdbc:postgresql://localhost:%s/%s?user=%s";
 
@@ -93,7 +77,8 @@ public class EmbeddedPostgres implements Closeable
     private final File pgDir;
 
     private final Duration pgStartupWait;
-    private final File dataDirectory, lockFile;
+    private final File dataDirectory;
+    private final File lockFile;
     private final UUID instanceId = UUID.randomUUID();
     private final int port;
     private final AtomicBoolean started = new AtomicBoolean();
@@ -104,6 +89,7 @@ public class EmbeddedPostgres implements Closeable
     private final Map<String, String> connectConfig;
 
     private volatile FileOutputStream lockStream;
+    @SuppressWarnings("PMD.AvoidFieldNameMatchingMethodName")
     private volatile FileLock lock;
     private final boolean cleanDataDirectory;
 
@@ -111,20 +97,20 @@ public class EmbeddedPostgres implements Closeable
     private final ProcessBuilder.Redirect outputRedirector;
     private final Process process;
 
+    @SuppressWarnings("unused")
     EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
         Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
-        PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector) throws IOException
-    {
+        PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector) throws IOException {
         this(parentDirectory, dataDirectory, cleanDataDirectory, postgresConfig, localeConfig, port, connectConfig,
                 pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT, null, null);
     }
 
+    @SuppressWarnings("PMD.ConstructorCallsOverridableMethod")
     EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
-                     Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
-                     PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector,
-                     ProcessBuilder.Redirect outputRedirector, Duration pgStartupWait,
-                     File overrideWorkingDirectory, Consumer<File> dataDirectoryCustomizer) throws IOException
-    {
+                        Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
+                        PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector,
+                        ProcessBuilder.Redirect outputRedirector, Duration pgStartupWait,
+                        File overrideWorkingDirectory, Consumer<File> dataDirectoryCustomizer) throws IOException {
         this.cleanDataDirectory = cleanDataDirectory;
         this.postgresConfig = new HashMap<>(postgresConfig);
         this.localeConfig = new HashMap<>(localeConfig);
@@ -168,17 +154,17 @@ public class EmbeddedPostgres implements Closeable
         this.process = startPostmaster();
     }
 
+    @SuppressWarnings("unused")
     public Process getProcess() {
-    	return this.process;
+        return this.process;
     }
 
-    public DataSource getTemplateDatabase()
-    {
+    public DataSource getTemplateDatabase() {
         return getDatabase("postgres", "template1");
     }
 
-    public DataSource getTemplateDatabase(Map<String, String> properties)
-    {
+    @SuppressWarnings("unused")
+    public DataSource getTemplateDatabase(Map<String, String> properties) {
         return getDatabase("postgres", "template1", properties);
     }
 
@@ -186,8 +172,8 @@ public class EmbeddedPostgres implements Closeable
         return getDatabase("postgres", "postgres");
     }
 
-    public DataSource getPostgresDatabase(Map<String, String> properties)
-    {
+    @SuppressWarnings("unused")
+    public DataSource getPostgresDatabase(Map<String, String> properties) {
         return getDatabase("postgres", "postgres", properties);
     }
 
@@ -195,11 +181,10 @@ public class EmbeddedPostgres implements Closeable
         return getDatabase(userName, dbName, connectConfig);
     }
 
-    public DataSource getDatabase(String userName, String dbName, Map<String, String> properties)
-    {
+    public DataSource getDatabase(String userName, String dbName, Map<String, String> properties) {
         final PGSimpleDataSource ds = new PGSimpleDataSource();
-        ds.setServerName("localhost");
-        ds.setPortNumber(port);
+        ds.setServerNames(new String[]{"localhost"});
+        ds.setPortNumbers(new int[]{port});
         ds.setDatabaseName(dbName);
         ds.setUser(userName);
 
@@ -213,23 +198,20 @@ public class EmbeddedPostgres implements Closeable
         return ds;
     }
 
-    public String getJdbcUrl(String userName, String dbName)
-    {
+    @SuppressWarnings("unused")
+    public String getJdbcUrl(String userName, String dbName) {
         return String.format(JDBC_FORMAT, port, dbName, userName);
     }
 
-    public int getPort()
-    {
+    public int getPort() {
         return port;
     }
 
-    Map<String, String> getConnectConfig()
-    {
+    Map<String, String> getConnectConfig() {
         return unmodifiableMap(connectConfig);
     }
 
-    private static int detectPort() throws IOException
-    {
+    private static int detectPort() throws IOException {
         try (ServerSocket socket = new ServerSocket(0)) {
             while (!socket.isBound()) {
                 Thread.sleep(50);
@@ -241,16 +223,15 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private void lock() throws IOException
-    {
+    @SuppressWarnings("PMD.AssignmentInOperand")
+    private void lock() throws IOException {
         lockStream = new FileOutputStream(lockFile);
         if ((lock = lockStream.getChannel().tryLock()) == null) {
             throw new IllegalStateException("could not lock " + lockFile);
         }
     }
 
-    private void initdb()
-    {
+    private void initdb() {
         final StopWatch watch = new StopWatch();
         watch.start();
         List<String> args = new ArrayList<>();
@@ -262,16 +243,14 @@ public class EmbeddedPostgres implements Closeable
         LOG.info("{} initdb completed in {}", instanceId, watch);
     }
 
-    private Process startPostmaster() throws IOException
-    {
+    private Process startPostmaster() throws IOException {
         final StopWatch watch = new StopWatch();
         watch.start();
         if (started.getAndSet(true)) {
             throw new IllegalStateException("Postmaster already started");
         }
 
-        final List<String> args = new ArrayList<>();
-        args.addAll(Arrays.asList(
+        final List<String> args = new ArrayList<>(Arrays.asList(
                 "-D", dataDirectory.getPath(),
                 "-o", String.join(" ", createInitOptions()),
                 "-w", "start"
@@ -289,7 +268,7 @@ public class EmbeddedPostgres implements Closeable
             ProcessOutputLogger.logOutput(LOG, postmaster, POSTGRES.processName());
         }
 
-        LOG.info("{} postmaster started as {} on port {}.  Waiting up to {} for server startup to finish.", instanceId, postmaster.toString(), port, pgStartupWait);
+        LOG.info("{} postmaster started as {} on port {}.  Waiting up to {} for server startup to finish.", instanceId, postmaster, port, pgStartupWait);
 
         Runtime.getRuntime().addShutdownHook(newCloserThread());
 
@@ -297,15 +276,12 @@ public class EmbeddedPostgres implements Closeable
         return postmaster;
     }
 
-    private List<String> createInitOptions()
-    {
-        final List<String> initOptions = new ArrayList<>();
-        initOptions.addAll(Arrays.asList(
+    private List<String> createInitOptions() {
+        final List<String> initOptions = new ArrayList<>(Arrays.asList(
                 "-p", Integer.toString(port),
                 "-F"));
 
-        for (final Entry<String, String> config : postgresConfig.entrySet())
-        {
+        for (final Entry<String, String> config : postgresConfig.entrySet()) {
             initOptions.add("-c");
             initOptions.add(config.getKey() + "=" + config.getValue());
         }
@@ -313,8 +289,7 @@ public class EmbeddedPostgres implements Closeable
         return initOptions;
     }
 
-    private List<String> createLocaleOptions()
-    {
+    private List<String> createLocaleOptions() {
         final List<String> localeOptions = new ArrayList<>();
         for (final Entry<String, String> config : localeConfig.entrySet()) {
             localeOptions.add(String.format("--%s=%s", config.getKey(), config.getValue()));
@@ -322,8 +297,7 @@ public class EmbeddedPostgres implements Closeable
         return localeOptions;
     }
 
-    private void waitForServerStartup(StopWatch watch) throws IOException
-    {
+    private void waitForServerStartup(StopWatch watch) throws IOException {
         Throwable lastCause = null;
         final long start = System.nanoTime();
         final long maxWaitNs = TimeUnit.NANOSECONDS.convert(pgStartupWait.toMillis(), TimeUnit.MILLISECONDS);
@@ -347,8 +321,8 @@ public class EmbeddedPostgres implements Closeable
         throw new IOException("Gave up waiting for server to start after " + pgStartupWait.toMillis() + "ms", lastCause);
     }
 
-    private void verifyReady() throws SQLException
-    {
+    @SuppressWarnings({"PMD.AvoidLiteralsInIfCondition", "SqlNoDataSourceInspection"})
+    private void verifyReady() throws SQLException {
         final InetAddress localhost = InetAddress.getLoopbackAddress();
         try (Socket sock = new Socket()) {
             sock.setSoTimeout((int) Duration.ofMillis(500).toMillis());
@@ -358,8 +332,7 @@ public class EmbeddedPostgres implements Closeable
         }
         try (Connection c = getPostgresDatabase().getConnection() ;
                 Statement s = c.createStatement() ;
-                ResultSet rs = s.executeQuery("SELECT 1"))
-        {
+                ResultSet rs = s.executeQuery("SELECT 1")) {
             if (!rs.next()) {
                 throw new IllegalStateException("expecting single row");
             }
@@ -372,27 +345,21 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private Thread newCloserThread()
-    {
-        final Thread closeThread = new Thread(new Runnable() {
-            @Override
-            public void run()
-            {
-                try {
-                    EmbeddedPostgres.this.close();
-                }
-                catch (IOException ex) {
-                    LOG.error("Unexpected IOException from Closeables.close", ex);
-                }
+    private Thread newCloserThread() {
+        final Thread closeThread = new Thread(() -> {
+            try {
+                EmbeddedPostgres.this.close();
+            } catch (IOException ex) {
+                LOG.error("Unexpected IOException from Closeables.close", ex);
             }
         });
         closeThread.setName("postgres-" + instanceId + "-closer");
         return closeThread;
     }
 
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     @Override
-    public void close() throws IOException
-    {
+    public void close() throws IOException {
         if (closed.getAndSet(true)) {
             return;
         }
@@ -402,7 +369,7 @@ public class EmbeddedPostgres implements Closeable
             pgCtl(dataDirectory, "stop");
             LOG.info("{} shut down postmaster in {}", instanceId, watch);
         } catch (final Exception e) {
-            LOG.error("Could not stop postmaster " + instanceId, e);
+            LOG.error("Could not stop postmaster {}", instanceId, e);
         }
         if (lock != null) {
             lock.release();
@@ -424,10 +391,9 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private void pgCtl(File dir, String action)
-    {
-        final List<String> args = new ArrayList<>();
-        args.addAll(Arrays.asList(
+    @SuppressWarnings("SameParameterValue")
+    private void pgCtl(File dir, String action) {
+        final List<String> args = new ArrayList<>(Arrays.asList(
                 "-D", dir.getPath(), action,
                 "-m", PG_STOP_MODE, "-t",
                 PG_STOP_WAIT_S, "-w"
@@ -435,14 +401,13 @@ public class EmbeddedPostgres implements Closeable
         system(PG_CTL, args);
     }
 
-    private void cleanOldDataDirectories(File parentDirectory)
-    {
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    private void cleanOldDataDirectories(File parentDirectory) {
         final File[] children = parentDirectory.listFiles();
         if (children == null) {
             return;
         }
-        for (final File dir : children)
-        {
+        for (final File dir : children) {
             if (!dir.isDirectory()) {
                 continue;
             }
@@ -453,7 +418,7 @@ public class EmbeddedPostgres implements Closeable
                 continue;
             }
             try (FileOutputStream fos = new FileOutputStream(lockFile);
-                 FileLock lock = fos.getChannel().tryLock()) {
+                    FileLock lock = fos.getChannel().tryLock()) {
                 if (lock != null) {
                     LOG.info("Found stale data directory {}", dir);
                     if (new File(dir, "postmaster.pid").exists()) {
@@ -462,9 +427,9 @@ public class EmbeddedPostgres implements Closeable
                             LOG.info("Shut down orphaned postmaster!");
                         } catch (Exception e) {
                             if (LOG.isDebugEnabled()) {
-                                LOG.warn("Failed to stop postmaster " + dir, e);
+                                LOG.warn("Failed to stop postmaster {}", dir, e);
                             } else {
-                                LOG.warn("Failed to stop postmaster " + dir + ": " + e.getMessage());
+                                LOG.warn("Failed to stop postmaster {}: {}", dir, e.getMessage());
                             }
                         }
                     }
@@ -479,24 +444,20 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private static File getWorkingDirectory()
-    {
+    private static File getWorkingDirectory() {
         final File tempWorkingDirectory = new File(System.getProperty("java.io.tmpdir"), "embedded-pg");
         return new File(System.getProperty("ot.epg.working-dir", tempWorkingDirectory.getPath()));
     }
 
-    public static EmbeddedPostgres start() throws IOException
-    {
+    public static EmbeddedPostgres start() throws IOException {
         return builder().start();
     }
 
-    public static EmbeddedPostgres.Builder builder()
-    {
+    public static EmbeddedPostgres.Builder builder() {
         return new Builder();
     }
 
-    public static class Builder
-    {
+    public static class Builder {
         private final File parentDirectory = getWorkingDirectory();
         private File overrideWorkingDirectory;
         private File builderDataDirectory;
@@ -518,15 +479,17 @@ public class EmbeddedPostgres implements Closeable
             config.put("max_connections", "300");
         }
 
+        @SuppressWarnings("UnusedReturnValue")
         public Builder setPGStartupWait(Duration pgStartupWait) {
             Objects.requireNonNull(pgStartupWait);
             if (pgStartupWait.isNegative()) {
-               throw new IllegalArgumentException("Negative durations are not permitted.");
+                throw new IllegalArgumentException("Negative durations are not permitted.");
             }
 
             this.pgStartupWait = pgStartupWait;
             return this;
         }
+        @SuppressWarnings("unused")
         public Builder setCleanDataDirectory(boolean cleanDataDirectory) {
             builderCleanDataDirectory = cleanDataDirectory;
             return this;
@@ -541,46 +504,54 @@ public class EmbeddedPostgres implements Closeable
             return this;
         }
 
+        @SuppressWarnings("unused")
         public Builder setDataDirectory(String path) {
             return setDataDirectory(new File(path));
         }
 
+        @SuppressWarnings("unused")
         public Builder setServerConfig(String key, String value) {
             config.put(key, value);
             return this;
         }
 
+        @SuppressWarnings("unused")
         public Builder setLocaleConfig(String key, String value) {
             localeConfig.put(key, value);
             return this;
         }
 
+        @SuppressWarnings("UnusedReturnValue")
         public Builder setConnectConfig(String key, String value) {
             connectConfig.put(key, value);
             return this;
         }
 
+        @SuppressWarnings("unused")
         public Builder setOverrideWorkingDirectory(File workingDirectory) {
             overrideWorkingDirectory = workingDirectory;
             return this;
         }
 
+        @SuppressWarnings("unused")
         public Builder setPort(int port) {
             builderPort = port;
             return this;
         }
 
+        @SuppressWarnings("unused")
         public Builder setErrorRedirector(ProcessBuilder.Redirect errRedirector) {
             this.errRedirector = errRedirector;
             return this;
         }
 
-        public Builder setOutputRedirector(ProcessBuilder.Redirect outRedirector)
-        {
+        @SuppressWarnings("unused")
+        public Builder setOutputRedirector(ProcessBuilder.Redirect outRedirector) {
             this.outRedirector = outRedirector;
             return this;
         }
 
+        @SuppressWarnings("unused")
         public Builder setPgBinaryResolver(PgBinaryResolver pgBinaryResolver) {
             this.pgBinaryResolver = pgBinaryResolver;
             return this;
@@ -592,8 +563,7 @@ public class EmbeddedPostgres implements Closeable
         }
 
         public EmbeddedPostgres start() throws IOException {
-            if (builderPort == 0)
-            {
+            if (builderPort == 0) {
                 builderPort = detectPort();
             }
             if (builderDataDirectory == null) {
@@ -625,7 +595,7 @@ public class EmbeddedPostgres implements Closeable
                     Objects.equals(errRedirector, builder.errRedirector) &&
                     Objects.equals(outRedirector, builder.outRedirector) &&
                     Objects.equals(dataDirectoryCustomizer != null ? dataDirectoryCustomizer.getClass() : null,
-                                   builder.dataDirectoryCustomizer != null ? builder.dataDirectoryCustomizer.getClass() : null);
+                                    builder.dataDirectoryCustomizer != null ? builder.dataDirectoryCustomizer.getClass() : null);
         }
 
         @Override
@@ -634,8 +604,8 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private void system(Command command, List<String> args)
-    {
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
+    private void system(Command command, List<String> args) {
         try {
             final ProcessBuilder builder = new ProcessBuilder();
 
@@ -652,15 +622,14 @@ public class EmbeddedPostgres implements Closeable
             if (0 != process.waitFor()) {
                 throw new IllegalStateException(String.format("Process %s failed", builder.command()));
             }
-        } catch (final RuntimeException e) { // NOPMD
+        } catch (final RuntimeException e) {
             throw e;
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static void mkdirs(File dir)
-    {
+    private static void mkdirs(File dir) {
         if (!dir.mkdirs() && !(dir.isDirectory() && dir.exists())) {
             throw new IllegalStateException("could not create " + dir);
         }
@@ -674,8 +643,7 @@ public class EmbeddedPostgres implements Closeable
      *
      * @return Current operating system string.
      */
-    private static String getOS()
-    {
+    private static String getOS() {
         if (SystemUtils.IS_OS_WINDOWS) {
             return "Windows";
         }
@@ -693,18 +661,18 @@ public class EmbeddedPostgres implements Closeable
      *
      * @return Current machine architecture string.
      */
-    private static String getArchitecture()
-    {
+    private static String getArchitecture() {
         return "amd64".equals(SystemUtils.OS_ARCH) ? "x86_64" : SystemUtils.OS_ARCH;
     }
 
     /**
-     * Unpack archive compressed by tar with xz compression. By default system tar is used (faster). If not found, then the
+     * Unpack archive compressed by tar with xz compression. By default, system tar is used (faster). If not found, then the
      * java implementation takes place.
      *
      * @param stream    A stream with the postgres binaries.
      * @param targetDir The directory to extract the content to.
      */
+    @SuppressWarnings({"PMD.AssignmentInOperand", "PMD.CloseResource", "ResultOfMethodCallIgnored"})
     private static void extractTxz(InputStream stream, File targetDir) throws IOException {
         try (
                 XZInputStream xzIn = new XZInputStream(stream);
@@ -714,7 +682,7 @@ public class EmbeddedPostgres implements Closeable
             final Phaser phaser = new Phaser(1);
             TarArchiveEntry entry;
 
-            while ((entry = tarIn.getNextTarEntry()) != null) {
+            while ((entry = tarIn.getNextEntry()) != null) {
                 final String individualFile = entry.getName();
                 final File fsObject = new File(targetDir, individualFile);
 
@@ -787,8 +755,8 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
-    private static File prepareBinaries(PgBinaryResolver pgBinaryResolver, File overrideWorkingDirectory)
-    {
+    @SuppressWarnings({"PMD.AssignmentInOperand", "PMD.CloseResource", "ResultOfMethodCallIgnored"})
+    private static File prepareBinaries(PgBinaryResolver pgBinaryResolver, File overrideWorkingDirectory) {
         PREPARE_BINARIES_LOCK.lock();
         try {
             if (PREPARE_BINARIES.containsKey(pgBinaryResolver) && PREPARE_BINARIES.get(pgBinaryResolver).exists()) {
@@ -812,7 +780,7 @@ public class EmbeddedPostgres implements Closeable
             }
 
             try (DigestInputStream pgArchiveData = new DigestInputStream(pgBinary, MessageDigest.getInstance("MD5"));
-                 ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                 IOUtils.copy(pgArchiveData, baos);
                 pgArchiveData.close();
 
@@ -828,7 +796,7 @@ public class EmbeddedPostgres implements Closeable
                 if (!isPgBinReady(pgDirExists)) {
                     File unpackLockFile = new File(pgDir, LOCK_FILE_NAME);
                     try (FileOutputStream lockStream = new FileOutputStream(unpackLockFile);
-                         FileLock unpackLock = lockStream.getChannel().tryLock()) {
+                            FileLock unpackLock = lockStream.getChannel().tryLock()) {
                         if (unpackLock != null) {
                             LOG.info("Extracting Postgres...");
                             try (ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray())) {
@@ -868,6 +836,7 @@ public class EmbeddedPostgres implements Closeable
         }
     }
 
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     private static boolean isPgBinReady(File pgDirExists) {
         if (!pgDirExists.exists()) {
             return false;
@@ -881,8 +850,7 @@ public class EmbeddedPostgres implements Closeable
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         return "EmbeddedPG-" + instanceId;
     }
 

@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.junit;
+
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
+import org.junit.rules.ExternalResource;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -20,20 +26,15 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
-import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
-import org.junit.rules.ExternalResource;
-
-public class SingleInstancePostgresRule extends ExternalResource
-{
+public class SingleInstancePostgresRule extends ExternalResource {
     private volatile EmbeddedPostgres epg;
     private volatile Connection postgresConnection;
     private final List<Consumer<EmbeddedPostgres.Builder>> builderCustomizers = new CopyOnWriteArrayList<>();
 
-    SingleInstancePostgresRule() { }
+    SingleInstancePostgresRule() {}
 
     @Override
-    protected void before() throws Throwable
-    {
+    protected void before() throws Throwable {
         super.before();
         epg = pg();
         postgresConnection = epg.getPostgresDatabase().getConnection();
@@ -45,6 +46,7 @@ public class SingleInstancePostgresRule extends ExternalResource
         return builder.start();
     }
 
+    @SuppressWarnings("unused")
     public SingleInstancePostgresRule customize(Consumer<EmbeddedPostgres.Builder> customizer) {
         if (epg != null) {
             throw new AssertionError("already started");
@@ -53,8 +55,7 @@ public class SingleInstancePostgresRule extends ExternalResource
         return this;
     }
 
-    public EmbeddedPostgres getEmbeddedPostgres()
-    {
+    public EmbeddedPostgres getEmbeddedPostgres() {
         EmbeddedPostgres epg = this.epg;
         if (epg == null) {
             throw new AssertionError("JUnit test not started yet!");
@@ -63,8 +64,7 @@ public class SingleInstancePostgresRule extends ExternalResource
     }
 
     @Override
-    protected void after()
-    {
+    protected void after() {
         try {
             postgresConnection.close();
         } catch (SQLException e) {

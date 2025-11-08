@@ -1,3 +1,19 @@
+/*
+ * Copyright 2025 Tomas Vanek
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.zonky.test.db.postgres.junit5;
 
 import io.zonky.test.db.postgres.embedded.ConnectionInfo;
@@ -12,16 +28,17 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ConnectConfigTest {
+class ConnectConfigTest {
 
     private final CapturingDatabasePreparer preparer = new CapturingDatabasePreparer();
 
+    @SuppressWarnings({"PMD.AvoidDuplicateLiterals", "JUnitMalformedDeclaration"})
     @RegisterExtension
-    public PreparedDbExtension db = EmbeddedPostgresExtension.preparedDatabase(preparer)
+    PreparedDbExtension db = EmbeddedPostgresExtension.preparedDatabase(preparer)
             .customize(builder -> builder.setConnectConfig("connectTimeout", "20"));
 
     @Test
-    public void test() throws SQLException {
+    void test() throws SQLException {
         ConnectionInfo connectionInfo = db.getConnectionInfo();
 
         Map<String, String> properties = connectionInfo.getProperties();
@@ -35,7 +52,7 @@ public class ConnectConfigTest {
         assertEquals("20", preparerDataSource.getProperty("connectTimeout"));
     }
 
-    private class CapturingDatabasePreparer implements DatabasePreparer {
+    private static class CapturingDatabasePreparer implements DatabasePreparer {
 
         private DataSource dataSource;
 

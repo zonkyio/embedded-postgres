@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.junit5;
 
 import io.zonky.test.db.postgres.embedded.DatabasePreparer;
@@ -22,23 +25,28 @@ import java.time.Duration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-public class PreparedDbCustomizerTest {
+class PreparedDbCustomizerTest {
 
     private static final DatabasePreparer EMPTY_PREPARER = ds -> {};
 
+    @SuppressWarnings({"JUnitMalformedDeclaration", "PMD.AvoidDuplicateLiterals"})
     @RegisterExtension
-    public PreparedDbExtension dbA1 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER);
+    PreparedDbExtension dbA1 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER);
+    @SuppressWarnings("JUnitMalformedDeclaration")
     @RegisterExtension
-    public PreparedDbExtension dbA2 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER).customize(builder -> {});
+    PreparedDbExtension dbA2 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER).customize(builder -> {});
+    @SuppressWarnings("JUnitMalformedDeclaration")
     @RegisterExtension
-    public PreparedDbExtension dbA3 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER).customize(builder -> builder.setPGStartupWait(Duration.ofSeconds(10)));
+    PreparedDbExtension dbA3 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER).customize(builder -> builder.setPGStartupWait(Duration.ofSeconds(10)));
+    @SuppressWarnings("JUnitMalformedDeclaration")
     @RegisterExtension
-    public PreparedDbExtension dbB1 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER).customize(builder -> builder.setPGStartupWait(Duration.ofSeconds(11)));
+    PreparedDbExtension dbB1 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER).customize(builder -> builder.setPGStartupWait(Duration.ofSeconds(11)));
+    @SuppressWarnings("JUnitMalformedDeclaration")
     @RegisterExtension
-    public PreparedDbExtension dbB2 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER).customize(builder -> builder.setPGStartupWait(Duration.ofSeconds(11)));
+    PreparedDbExtension dbB2 = EmbeddedPostgresExtension.preparedDatabase(EMPTY_PREPARER).customize(builder -> builder.setPGStartupWait(Duration.ofSeconds(11)));
 
     @Test
-    public void testCustomizers() {
+    void testCustomizers() {
         int dbA1Port = dbA1.getConnectionInfo().getPort();
         int dbA2Port = dbA2.getConnectionInfo().getPort();
         int dbA3Port = dbA3.getConnectionInfo().getPort();

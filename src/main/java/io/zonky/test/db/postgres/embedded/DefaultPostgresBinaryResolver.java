@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.embedded;
 
 import io.zonky.test.db.postgres.util.ArchUtils;
 import io.zonky.test.db.postgres.util.LinuxUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +49,8 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
         String architecture = ArchUtils.normalize(machineHardware);
         String distribution = LinuxUtils.getDistributionName();
 
-        logger.info("Detected distribution: '{}'", Optional.ofNullable(distribution).orElse("Unknown"));
+        if (logger.isInfoEnabled())
+            logger.info("Detected distribution: '{}'", Optional.ofNullable(distribution).orElse("Unknown"));
 
         if (distribution != null) {
             Resource resource = findPgBinary(normalize(format("postgres-%s-%s-%s.txz", system, architecture, distribution)));
@@ -63,8 +68,8 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
             return resource.getInputStream();
         }
 
-        if ((StringUtils.equals(system, "Darwin") && StringUtils.equals(machineHardware, "aarch64"))        // NOPMD
-                || (StringUtils.equals(system, "Windows") && StringUtils.equals(architecture, "arm_64"))) { // NOPMD
+        if ((Strings.CS.equals(system, "Darwin") && Strings.CS.equals(machineHardware, "aarch64"))
+                || (Strings.CS.equals(system, "Windows") && Strings.CS.equals(architecture, "arm_64"))) {
             resource = findPgBinary(normalize(format("postgres-%s-%s.txz", system, "x86_64")));
             if (resource != null) {
                 logger.warn("No native binaries supporting ARM architecture found. " +
@@ -81,9 +86,10 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
         throw new IllegalStateException("Missing embedded postgres binaries");
     }
 
+    @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
     private static Resource findPgBinary(String resourceLocation) throws IOException {
         logger.trace("Searching for postgres binaries - location: '{}'", resourceLocation);
-        ClassLoader classLoader = DefaultPostgresBinaryResolver.class.getClassLoader();
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         List<URL> urls = Collections.list(classLoader.getResources(resourceLocation));
 
         if (urls.size() > 1) {
@@ -120,8 +126,7 @@ public class DefaultPostgresBinaryResolver implements PgBinaryResolver {
             URLConnection con = this.url.openConnection();
             try {
                 return con.getInputStream();
-            }
-            catch (IOException ex) {
+            } catch (IOException ex) {
                 // Close the HTTP connection (if applicable).
                 if (con instanceof HttpURLConnection) {
                     ((HttpURLConnection) con).disconnect();

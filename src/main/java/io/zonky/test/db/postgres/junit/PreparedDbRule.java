@@ -1,9 +1,11 @@
 /*
+ * Copyright 2025 Tomas Vanek
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -11,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package io.zonky.test.db.postgres.junit;
-
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
-
-import javax.sql.DataSource;
 
 import io.zonky.test.db.postgres.embedded.ConnectionInfo;
 import io.zonky.test.db.postgres.embedded.DatabasePreparer;
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import io.zonky.test.db.postgres.embedded.PreparedDbProvider;
 import org.junit.rules.ExternalResource;
+
+import javax.sql.DataSource;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 
 public class PreparedDbRule extends ExternalResource {
 
@@ -56,6 +58,7 @@ public class PreparedDbRule extends ExternalResource {
         dataSource = provider.createDataSourceFromConnectionInfo(connectionInfo);
     }
 
+    @SuppressWarnings("PMD.NullAssignment")
     @Override
     protected void after() {
         dataSource = null;
@@ -64,9 +67,9 @@ public class PreparedDbRule extends ExternalResource {
     }
 
     public DataSource getTestDatabase() {
-       if (dataSource == null) {
-           throw new AssertionError("not initialized");
-       }
+        if (dataSource == null) {
+            throw new AssertionError("not initialized");
+        }
         return dataSource;
     }
 
