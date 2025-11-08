@@ -31,17 +31,17 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <embedded-postgres-binaries.version>14.19.0</embedded-postgres-binaries.version>
-        <commons-codec.version>1.17.1</commons-codec.version>
-        <commons-compress.version>1.26.2</commons-compress.version>
-        <commons-io.version>2.16.1</commons-io.version>
-        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <commons-codec.version>1.20.0</commons-codec.version>
+        <commons-compress.version>1.28.0</commons-compress.version>
+        <commons-io.version>2.21.0</commons-io.version>
+        <commons-lang3.version>3.19.0</commons-lang3.version>
         <flyway.version>9.22.3</flyway.version>
-        <junit5.version>5.10.5</junit5.version>
+        <junit5.version>5.14.1</junit5.version>
         <junit4.version>4.13.2</junit4.version>
-        <liquibase.version>4.30.0</liquibase.version>
+        <liquibase.version>4.33.0</liquibase.version>
         <mockito.version>4.11.0</mockito.version>
-        <pmd.version>7.4.0</pmd.version>
-        <postgresql.version>42.7.7</postgresql.version>
+        <pmd.version>7.18.0</pmd.version>
+        <postgresql.version>42.7.8</postgresql.version>
         <slf4j.version>1.7.36</slf4j.version>
         <xz.version>1.10</xz.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
