@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [8, 11, 17, 21, 25] # LTS and newer versions
+        java: [17, 21, 25] # LTS and newer versions
     steps:
       - name: Checkout project
         uses: actions/checkout@v5
