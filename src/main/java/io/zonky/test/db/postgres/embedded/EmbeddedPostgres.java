@@ -106,26 +106,28 @@ public class EmbeddedPostgres implements Closeable
     private volatile FileOutputStream lockStream;
     private volatile FileLock lock;
     private final boolean cleanDataDirectory;
+    private final boolean registerShutdownHook;
 
     private final ProcessBuilder.Redirect errorRedirector;
     private final ProcessBuilder.Redirect outputRedirector;
     private final Process process;
 
-    EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
+    EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory, boolean registerShutdownHook,
         Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
         PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector) throws IOException
     {
-        this(parentDirectory, dataDirectory, cleanDataDirectory, postgresConfig, localeConfig, port, connectConfig,
+        this(parentDirectory, dataDirectory, cleanDataDirectory, registerShutdownHook, postgresConfig, localeConfig, port, connectConfig,
                 pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT, null, null);
     }
 
-    EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory,
+    EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory, boolean registerShutdownHook,
                      Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
                      PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector,
                      ProcessBuilder.Redirect outputRedirector, Duration pgStartupWait,
                      File overrideWorkingDirectory, Consumer<File> dataDirectoryCustomizer) throws IOException
     {
         this.cleanDataDirectory = cleanDataDirectory;
+        this.registerShutdownHook = registerShutdownHook;
         this.postgresConfig = new HashMap<>(postgresConfig);
         this.localeConfig = new HashMap<>(localeConfig);
         this.connectConfig = new HashMap<>(connectConfig);
@@ -291,7 +293,9 @@ public class EmbeddedPostgres implements Closeable
 
         LOG.info("{} postmaster started as {} on port {}.  Waiting up to {} for server startup to finish.", instanceId, postmaster.toString(), port, pgStartupWait);
 
-        Runtime.getRuntime().addShutdownHook(newCloserThread());
+        if (registerShutdownHook) {
+            Runtime.getRuntime().addShutdownHook(newCloserThread());
+        }
 
         waitForServerStartup(watch);
         return postmaster;
@@ -503,6 +507,7 @@ public class EmbeddedPostgres implements Closeable
         private final Map<String, String> config = new HashMap<>();
         private final Map<String, String> localeConfig = new HashMap<>();
         private boolean builderCleanDataDirectory = true;
+        private boolean builderRegisterShutdownHook = true;
         private int builderPort = 0;
         private final Map<String, String> connectConfig = new HashMap<>();
         private PgBinaryResolver pgBinaryResolver = DefaultPostgresBinaryResolver.INSTANCE;
@@ -529,6 +534,11 @@ public class EmbeddedPostgres implements Closeable
         }
         public Builder setCleanDataDirectory(boolean cleanDataDirectory) {
             builderCleanDataDirectory = cleanDataDirectory;
+            return this;
+        }
+
+        public Builder setRegisterShutdownHook(boolean registerShutdownHook) {
+            builderRegisterShutdownHook = registerShutdownHook;
             return this;
         }
 
@@ -599,8 +609,8 @@ public class EmbeddedPostgres implements Closeable
             if (builderDataDirectory == null) {
                 builderDataDirectory = Files.createTempDirectory("epg").toFile();
             }
-            return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, config,
-                    localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector,
+            return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, builderRegisterShutdownHook,
+                    config, localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector,
                     pgStartupWait, overrideWorkingDirectory, dataDirectoryCustomizer);
         }
 
@@ -614,6 +624,7 @@ public class EmbeddedPostgres implements Closeable
             }
             Builder builder = (Builder) o;
             return builderCleanDataDirectory == builder.builderCleanDataDirectory &&
+                    builderRegisterShutdownHook == builder.builderRegisterShutdownHook &&
                     builderPort == builder.builderPort &&
                     Objects.equals(parentDirectory, builder.parentDirectory) &&
                     Objects.equals(builderDataDirectory, builder.builderDataDirectory) &&
@@ -630,7 +641,7 @@ public class EmbeddedPostgres implements Closeable
 
         @Override
         public int hashCode() {
-            return Objects.hash(parentDirectory, builderDataDirectory, config, localeConfig, builderCleanDataDirectory, builderPort, connectConfig, pgBinaryResolver, pgStartupWait, errRedirector, outRedirector);
+            return Objects.hash(parentDirectory, builderDataDirectory, config, localeConfig, builderCleanDataDirectory, builderRegisterShutdownHook, builderPort, connectConfig, pgBinaryResolver, pgStartupWait, errRedirector, outRedirector);
         }
     }
 
