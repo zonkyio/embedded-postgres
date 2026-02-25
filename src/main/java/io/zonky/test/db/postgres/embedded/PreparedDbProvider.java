@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.unmodifiableMap;
 
-public class PreparedDbProvider
+public class PreparedDbProvider implements AutoCloseable
 {
     private static final String JDBC_FORMAT = "jdbc:postgresql://localhost:%d/%s?user=%s";
 
@@ -50,6 +50,7 @@ public class PreparedDbProvider
     private static final Map<ClusterKey, PrepPipeline> CLUSTERS = new HashMap<>();
 
     private final PrepPipeline dbPreparer;
+    private final ClusterKey key;
 
     public static PreparedDbProvider forPreparer(DatabasePreparer preparer) {
         return forPreparer(preparer, Collections.emptyList());
@@ -61,7 +62,8 @@ public class PreparedDbProvider
 
     private PreparedDbProvider(DatabasePreparer preparer, Iterable<Consumer<Builder>> customizers) {
         try {
-            dbPreparer = createOrFindPreparer(preparer, customizers);
+            key = new ClusterKey(preparer, customizers);
+            dbPreparer = createOrFindPreparer(preparer, customizers, key);
         } catch (final IOException | SQLException e) {
             throw new RuntimeException(e);
         }
@@ -71,9 +73,8 @@ public class PreparedDbProvider
      * Each schema set has its own database cluster.  The template1 database has the schema preloaded so that
      * each test case need only create a new database and not re-invoke your preparer.
      */
-    private static synchronized PrepPipeline createOrFindPreparer(DatabasePreparer preparer, Iterable<Consumer<Builder>> customizers) throws IOException, SQLException
+    private static synchronized PrepPipeline createOrFindPreparer(DatabasePreparer preparer, Iterable<Consumer<Builder>> customizers, ClusterKey key) throws IOException, SQLException
     {
-        final ClusterKey key = new ClusterKey(preparer, customizers);
         PrepPipeline result = CLUSTERS.get(key);
         if (result != null) {
             return result;
@@ -164,14 +165,21 @@ public class PreparedDbProvider
         return result;
     }
 
+    @Override
+    public void close() throws IOException {
+        CLUSTERS.remove(key);
+        dbPreparer.close();
+    }
+
     /**
      * Spawns a background thread that prepares databases ahead of time for speed, and then uses a
      * synchronous queue to hand the prepared databases off to test cases.
      */
-    private static class PrepPipeline implements Runnable
+    private static class PrepPipeline implements Runnable, AutoCloseable
     {
         private final EmbeddedPostgres pg;
         private final SynchronousQueue<DbInfo> nextDatabase = new SynchronousQueue<DbInfo>();
+        private Thread runningThread = null;
 
         PrepPipeline(EmbeddedPostgres pg)
         {
@@ -184,6 +192,7 @@ public class PreparedDbProvider
                 final Thread t = new Thread(r);
                 t.setDaemon(true);
                 t.setName("cluster-" + pg + "-preparer");
+                runningThread = t;
                 return t;
             });
             service.submit(this);
@@ -226,6 +235,13 @@ public class PreparedDbProvider
                     Thread.currentThread().interrupt();
                     return;
                 }
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            if(runningThread != null){
+                runningThread.interrupt();
             }
         }
     }
