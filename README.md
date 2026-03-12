@@ -26,7 +26,7 @@ Add the following Maven dependency:
 <dependency>
     <groupId>io.zonky.test</groupId>
     <artifactId>embedded-postgres</artifactId>
-    <version>2.2.0</version>
+    <version>2.2.2</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -113,7 +113,7 @@ The default version of the embedded postgres is `PostgreSQL 14.22`, but it can b
   3. Or, you can use [Spring's dependency management plugin](https://docs.spring.io/dependency-management-plugin/docs/current/reference/html/#dependency-management-configuration-bom-import) that provides Maven-like dependency management to Gradle:
   
          plugins {
-             id "io.spring.dependency-management" version "1.1.0"
+             id "io.spring.dependency-management" version "1.1.7"
          }
          
          dependencyManagement {
