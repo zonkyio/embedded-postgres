@@ -97,7 +97,7 @@ public class EmbeddedPostgres implements Closeable
     private final UUID instanceId = UUID.randomUUID();
     private final int port;
     private final AtomicBoolean started = new AtomicBoolean();
-    private final AtomicBoolean closed = new AtomicBoolean();
+    private final AtomicBoolean dbClosed = new AtomicBoolean();
 
     private final Map<String, String> postgresConfig;
     private final Map<String, String> localeConfig;
@@ -397,7 +397,7 @@ public class EmbeddedPostgres implements Closeable
     @Override
     public void close() throws IOException
     {
-        if (closed.getAndSet(true)) {
+        if (dbClosed.getAndSet(true)) {
             return;
         }
         final StopWatch watch = new StopWatch();
