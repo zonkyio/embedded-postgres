@@ -15,15 +15,20 @@ package io.zonky.test.db.postgres.embedded;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -71,6 +76,38 @@ public class EmbeddedPostgresTest
                 rs.next();
                 assertEquals("*", rs.getString(1));
             }
+        }
+    }
+
+    @Test
+    public void testDetectedPortTakenBeforeTheServerBindsItStartsOnAnother() throws Exception {
+        try (ServerSocket taken = new ServerSocket(0)) {
+            AtomicInteger detections = new AtomicInteger();
+            EmbeddedPostgres.Builder builder = new EmbeddedPostgres.Builder() {
+                @Override
+                int nextPort() throws IOException {
+                    return detections.getAndIncrement() == 0 ? taken.getLocalPort() : super.nextPort();
+                }
+            };
+            try (EmbeddedPostgres pg = builder.setPGStartupWait(Duration.ofSeconds(5)).start();
+                 Connection connection = pg.getPostgresDatabase().getConnection();
+                 Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery("SELECT 1")) {
+                assertTrue(result.next());
+                assertEquals(1, result.getInt(1));
+                assertNotEquals(taken.getLocalPort(), pg.getPort());
+                assertEquals(2, detections.get());
+            }
+        }
+    }
+
+    @Test
+    public void testAPortAskedForAndTakenFailsWithoutAnotherAttempt() throws Exception {
+        try (ServerSocket taken = new ServerSocket(0)) {
+            assertThrows(IOException.class, () -> EmbeddedPostgres.builder()
+                    .setPort(taken.getLocalPort())
+                    .setPGStartupWait(Duration.ofSeconds(2))
+                    .start());
         }
     }
 }
