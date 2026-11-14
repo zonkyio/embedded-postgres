@@ -339,6 +339,7 @@ public class EmbeddedPostgres implements Closeable
         while (System.nanoTime() - start < maxWaitNs) {
             try {
                 verifyReady();
+                verifyOwnCluster();
                 LOG.info("{} postmaster startup finished in {}", instanceId, watch);
                 return;
             } catch (final SQLException e) {
@@ -354,6 +355,28 @@ public class EmbeddedPostgres implements Closeable
             }
         }
         throw new IOException("Gave up waiting for server to start after " + pgStartupWait.toMillis() + "ms", lastCause);
+    }
+
+    /**
+     * The server answering on this instance's port must serve its data directory. When another instance took the port
+     * first, this one's postmaster could not bind it and exited, and the other's server answers instead: using it would
+     * run against another cluster, and closing this instance would not stop it.
+     */
+    private void verifyOwnCluster() throws SQLException, IOException
+    {
+        final String served;
+        try (Connection c = getPostgresDatabase().getConnection() ;
+                Statement s = c.createStatement() ;
+                ResultSet rs = s.executeQuery("SHOW data_directory"))
+        {
+            if (!rs.next()) {
+                throw new IllegalStateException("expecting single row");
+            }
+            served = rs.getString(1);
+        }
+        if (!new File(served).getCanonicalFile().equals(dataDirectory.getCanonicalFile())) {
+            throw new IOException("Port " + port + " is served by another cluster, of data directory " + served + ", not " + dataDirectory);
+        }
     }
 
     private void verifyReady() throws SQLException

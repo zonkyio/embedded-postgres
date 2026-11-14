@@ -102,6 +102,36 @@ public class EmbeddedPostgresTest
     }
 
     @Test
+    public void testDetectedPortServedByAnotherInstanceStartsOnAnotherAndLeavesItRunning() throws Exception {
+        try (EmbeddedPostgres other = EmbeddedPostgres.builder().start()) {
+            String otherDirectory = dataDirectory(other);
+            AtomicInteger detections = new AtomicInteger();
+            EmbeddedPostgres.Builder builder = new EmbeddedPostgres.Builder() {
+                @Override
+                int nextPort() throws IOException {
+                    return detections.getAndIncrement() == 0 ? other.getPort() : super.nextPort();
+                }
+            };
+            try (EmbeddedPostgres pg = builder.setPGStartupWait(Duration.ofSeconds(5)).start()) {
+                assertNotEquals(other.getPort(), pg.getPort());
+                assertEquals(2, detections.get());
+                assertNotEquals(otherDirectory, dataDirectory(pg));
+            }
+            // The failed attempt did not stop the instance whose server answered on its port
+            assertEquals(otherDirectory, dataDirectory(other));
+        }
+    }
+
+    private static String dataDirectory(EmbeddedPostgres pg) throws Exception {
+        try (Connection connection = pg.getPostgresDatabase().getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("SHOW data_directory")) {
+            assertTrue(result.next());
+            return result.getString(1);
+        }
+    }
+
+    @Test
     public void testAPortAskedForAndTakenFailsWithoutAnotherAttempt() throws Exception {
         try (ServerSocket taken = new ServerSocket(0)) {
             assertThrows(IOException.class, () -> EmbeddedPostgres.builder()
