@@ -167,7 +167,12 @@ public class EmbeddedPostgres implements Closeable
             dataDirectoryCustomizer.accept(dataDirectory);
         }
 
-        this.process = startPostmaster();
+        try {
+            this.process = startPostmaster();
+        } catch (IOException e) {
+            close();
+            throw e;
+        }
     }
 
     public Process getProcess() {
@@ -334,6 +339,7 @@ public class EmbeddedPostgres implements Closeable
         while (System.nanoTime() - start < maxWaitNs) {
             try {
                 verifyReady();
+                verifyOwnCluster();
                 LOG.info("{} postmaster startup finished in {}", instanceId, watch);
                 return;
             } catch (final SQLException e) {
@@ -349,6 +355,28 @@ public class EmbeddedPostgres implements Closeable
             }
         }
         throw new IOException("Gave up waiting for server to start after " + pgStartupWait.toMillis() + "ms", lastCause);
+    }
+
+    /**
+     * The server answering on this instance's port must serve its data directory. When another instance took the port
+     * first, this one's postmaster could not bind it and exited, and the other's server answers instead: using it would
+     * run against another cluster, and closing this instance would not stop it.
+     */
+    private void verifyOwnCluster() throws SQLException, IOException
+    {
+        final String served;
+        try (Connection c = getPostgresDatabase().getConnection() ;
+                Statement s = c.createStatement() ;
+                ResultSet rs = s.executeQuery("SHOW data_directory"))
+        {
+            if (!rs.next()) {
+                throw new IllegalStateException("expecting single row");
+            }
+            served = rs.getString(1);
+        }
+        if (!new File(served).getCanonicalFile().equals(dataDirectory.getCanonicalFile())) {
+            throw new IOException("Port " + port + " is served by another cluster, of data directory " + served + ", not " + dataDirectory);
+        }
     }
 
     private void verifyReady() throws SQLException
@@ -508,6 +536,8 @@ public class EmbeddedPostgres implements Closeable
         private final Map<String, String> localeConfig = new HashMap<>();
         private boolean builderCleanDataDirectory = true;
         private boolean builderRegisterShutdownHook = true;
+        private static final int START_ATTEMPTS = 3;
+
         private int builderPort = 0;
         private final Map<String, String> connectConfig = new HashMap<>();
         private PgBinaryResolver pgBinaryResolver = DefaultPostgresBinaryResolver.INSTANCE;
@@ -602,16 +632,40 @@ public class EmbeddedPostgres implements Closeable
         }
 
         public EmbeddedPostgres start() throws IOException {
-            if (builderPort == 0)
-            {
-                builderPort = detectPort();
+            final boolean detectedPort = builderPort == 0;
+            final boolean temporaryDirectory = builderDataDirectory == null;
+            for (int attempt = 1; ; attempt++) {
+                if (detectedPort) {
+                    builderPort = nextPort();
+                }
+                if (temporaryDirectory) {
+                    builderDataDirectory = Files.createTempDirectory("epg").toFile();
+                }
+                try {
+                    return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, builderRegisterShutdownHook,
+                            config, localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector,
+                            pgStartupWait, overrideWorkingDirectory, dataDirectoryCustomizer);
+                } catch (IOException e) {
+                    // A detected port is only free until the server binds it, after initdb: something else can take it
+                    // in between. A failure with the port still free is not that, and is not worth waiting for again.
+                    if (!detectedPort || !temporaryDirectory || attempt == START_ATTEMPTS || !isTaken(builderPort)) {
+                        throw e;
+                    }
+                    LOG.warn("Port {} was taken before the server could bind it, starting again on another", builderPort);
+                }
             }
-            if (builderDataDirectory == null) {
-                builderDataDirectory = Files.createTempDirectory("epg").toFile();
+        }
+
+        int nextPort() throws IOException {
+            return detectPort();
+        }
+
+        private static boolean isTaken(int port) {
+            try (ServerSocket ignored = new ServerSocket(port)) {
+                return false;
+            } catch (IOException e) {
+                return true;
             }
-            return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, builderRegisterShutdownHook,
-                    config, localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector,
-                    pgStartupWait, overrideWorkingDirectory, dataDirectoryCustomizer);
         }
 
         @Override
