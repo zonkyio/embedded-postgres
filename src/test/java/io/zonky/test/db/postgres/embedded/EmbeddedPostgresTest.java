@@ -15,15 +15,22 @@ package io.zonky.test.db.postgres.embedded;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -71,6 +78,71 @@ public class EmbeddedPostgresTest
                 rs.next();
                 assertEquals("*", rs.getString(1));
             }
+        }
+    }
+
+    @Test
+    public void testDetectedPortTakenBeforeTheServerBindsItStartsOnAnother() throws Exception {
+        try (ServerSocket taken = new ServerSocket(0)) {
+            List<Long> detections = new ArrayList<>();
+            EmbeddedPostgres.Builder builder = new EmbeddedPostgres.Builder() {
+                @Override
+                int nextPort() throws IOException {
+                    detections.add(System.nanoTime());
+                    return detections.size() == 1 ? taken.getLocalPort() : super.nextPort();
+                }
+            };
+            try (EmbeddedPostgres pg = builder.start();
+                 Connection connection = pg.getPostgresDatabase().getConnection();
+                 Statement statement = connection.createStatement();
+                 ResultSet result = statement.executeQuery("SELECT 1")) {
+                assertTrue(result.next());
+                assertEquals(1, result.getInt(1));
+                assertNotEquals(taken.getLocalPort(), pg.getPort());
+                assertEquals(2, detections.size());
+                // The failed attempt ends when pg_ctl fails, without waiting out the startup wait (10 s by default)
+                Duration failedAttempt = Duration.ofNanos(detections.get(1) - detections.get(0));
+                assertTrue(failedAttempt.compareTo(Duration.ofSeconds(5)) < 0, "the failed attempt took " + failedAttempt);
+            }
+        }
+    }
+
+    @Test
+    public void testDetectedPortServedByAnotherInstanceStartsOnAnotherAndLeavesItRunning() throws Exception {
+        try (EmbeddedPostgres other = EmbeddedPostgres.builder().start()) {
+            String otherDirectory = dataDirectory(other);
+            AtomicInteger detections = new AtomicInteger();
+            EmbeddedPostgres.Builder builder = new EmbeddedPostgres.Builder() {
+                @Override
+                int nextPort() throws IOException {
+                    return detections.getAndIncrement() == 0 ? other.getPort() : super.nextPort();
+                }
+            };
+            try (EmbeddedPostgres pg = builder.start()) {
+                assertNotEquals(other.getPort(), pg.getPort());
+                assertEquals(2, detections.get());
+                assertNotEquals(otherDirectory, dataDirectory(pg));
+            }
+            // The failed attempt did not stop the instance whose server answered on its port
+            assertEquals(otherDirectory, dataDirectory(other));
+        }
+    }
+
+    @Test
+    public void testAPortAskedForAndTakenFailsWithoutAnotherAttempt() throws Exception {
+        try (ServerSocket taken = new ServerSocket(0)) {
+            assertThrows(IOException.class, () -> EmbeddedPostgres.builder()
+                    .setPort(taken.getLocalPort())
+                    .start());
+        }
+    }
+
+    private static String dataDirectory(EmbeddedPostgres pg) throws Exception {
+        try (Connection connection = pg.getPostgresDatabase().getConnection();
+             Statement statement = connection.createStatement();
+             ResultSet result = statement.executeQuery("SHOW data_directory")) {
+            assertTrue(result.next());
+            return result.getString(1);
         }
     }
 }

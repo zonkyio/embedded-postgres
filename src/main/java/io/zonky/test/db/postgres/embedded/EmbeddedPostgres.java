@@ -89,13 +89,15 @@ public class EmbeddedPostgres implements Closeable
     private static final String PG_SUPERUSER = "postgres";
     private static final Duration DEFAULT_PG_STARTUP_WAIT = Duration.ofSeconds(10);
     private static final String LOCK_FILE_NAME = "epg-lock";
+    private static final int START_ATTEMPTS = 3;
 
     private final File pgDir;
 
     private final Duration pgStartupWait;
     private final File dataDirectory, lockFile;
     private final UUID instanceId = UUID.randomUUID();
-    private final int port;
+    private final PortChooser portChooser;
+    private int port;
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean closed = new AtomicBoolean();
 
@@ -117,14 +119,14 @@ public class EmbeddedPostgres implements Closeable
         PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector, ProcessBuilder.Redirect outputRedirector) throws IOException
     {
         this(parentDirectory, dataDirectory, cleanDataDirectory, registerShutdownHook, postgresConfig, localeConfig, port, connectConfig,
-                pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT, null, null);
+                pgBinaryResolver, errorRedirector, outputRedirector, DEFAULT_PG_STARTUP_WAIT, null, null, EmbeddedPostgres::detectPort);
     }
 
     EmbeddedPostgres(File parentDirectory, File dataDirectory, boolean cleanDataDirectory, boolean registerShutdownHook,
                      Map<String, String> postgresConfig, Map<String, String> localeConfig, int port, Map<String, String> connectConfig,
                      PgBinaryResolver pgBinaryResolver, ProcessBuilder.Redirect errorRedirector,
                      ProcessBuilder.Redirect outputRedirector, Duration pgStartupWait,
-                     File overrideWorkingDirectory, Consumer<File> dataDirectoryCustomizer) throws IOException
+                     File overrideWorkingDirectory, Consumer<File> dataDirectoryCustomizer, PortChooser portChooser) throws IOException
     {
         this.cleanDataDirectory = cleanDataDirectory;
         this.registerShutdownHook = registerShutdownHook;
@@ -132,6 +134,7 @@ public class EmbeddedPostgres implements Closeable
         this.localeConfig = new HashMap<>(localeConfig);
         this.connectConfig = new HashMap<>(connectConfig);
         this.port = port;
+        this.portChooser = portChooser;
         this.pgDir = prepareBinaries(pgBinaryResolver, overrideWorkingDirectory);
         this.errorRedirector = errorRedirector;
         this.outputRedirector = outputRedirector;
@@ -167,7 +170,12 @@ public class EmbeddedPostgres implements Closeable
             dataDirectoryCustomizer.accept(dataDirectory);
         }
 
-        this.process = startPostmaster();
+        try {
+            this.process = startPostmaster();
+        } catch (IOException | RuntimeException e) {
+            close();
+            throw e;
+        }
     }
 
     public Process getProcess() {
@@ -272,6 +280,39 @@ public class EmbeddedPostgres implements Closeable
             throw new IllegalStateException("Postmaster already started");
         }
 
+        // A chosen port is only free until the server binds it, and something else can take it in between: then the
+        // server is started again, on the same data directory, on another port. A port set by the caller is not changed.
+        final boolean choosePort = port == 0;
+        Process pgCtl;
+        for (int attempt = 1; ; attempt++) {
+            if (choosePort) {
+                port = portChooser.choosePort();
+            }
+            pgCtl = startPgCtl();
+            try {
+                waitForServerStartup(watch, pgCtl);
+                break;
+            } catch (IOException e) {
+                if (!choosePort || attempt == START_ATTEMPTS) {
+                    throw e;
+                }
+                LOG.warn("{} server did not start on port {} ({}), starting again on another", instanceId, port, e.getMessage());
+                try {
+                    pgCtl(dataDirectory, "stop");
+                } catch (RuntimeException stopFailure) {
+                    LOG.trace("No server to stop", stopFailure);
+                }
+            }
+        }
+
+        if (registerShutdownHook) {
+            Runtime.getRuntime().addShutdownHook(newCloserThread());
+        }
+        return pgCtl;
+    }
+
+    private Process startPgCtl() throws IOException
+    {
         final List<String> args = new ArrayList<>();
         args.addAll(Arrays.asList(
                 "-D", dataDirectory.getPath(),
@@ -292,12 +333,6 @@ public class EmbeddedPostgres implements Closeable
         }
 
         LOG.info("{} postmaster started as {} on port {}.  Waiting up to {} for server startup to finish.", instanceId, postmaster.toString(), port, pgStartupWait);
-
-        if (registerShutdownHook) {
-            Runtime.getRuntime().addShutdownHook(newCloserThread());
-        }
-
-        waitForServerStartup(watch);
         return postmaster;
     }
 
@@ -326,19 +361,26 @@ public class EmbeddedPostgres implements Closeable
         return localeOptions;
     }
 
-    private void waitForServerStartup(StopWatch watch) throws IOException
+    private void waitForServerStartup(StopWatch watch, Process pgCtl) throws IOException
     {
         Throwable lastCause = null;
         final long start = System.nanoTime();
         final long maxWaitNs = TimeUnit.NANOSECONDS.convert(pgStartupWait.toMillis(), TimeUnit.MILLISECONDS);
         while (System.nanoTime() - start < maxWaitNs) {
-            try {
-                verifyReady();
-                LOG.info("{} postmaster startup finished in {}", instanceId, watch);
-                return;
-            } catch (final SQLException e) {
-                lastCause = e;
-                LOG.trace("While waiting for server startup", e);
+            if (!pgCtl.isAlive() && pgCtl.exitValue() != 0) {
+                throw new IOException("pg_ctl failed with exit code " + pgCtl.exitValue(), lastCause);
+            }
+            // pg_ctl -w start exits once the server is ready, or once it failed, as on a taken port. Until then a
+            // connection can reach whatever else listens on the port, and wait seconds for an answer that never comes.
+            if (!pgCtl.isAlive()) {
+                try {
+                    verifyReady();
+                    LOG.info("{} postmaster startup finished in {}", instanceId, watch);
+                    return;
+                } catch (final SQLException e) {
+                    lastCause = e;
+                    LOG.trace("While waiting for server startup", e);
+                }
             }
 
             try {
@@ -351,7 +393,12 @@ public class EmbeddedPostgres implements Closeable
         throw new IOException("Gave up waiting for server to start after " + pgStartupWait.toMillis() + "ms", lastCause);
     }
 
-    private void verifyReady() throws SQLException
+    /**
+     * The server answering on this instance's port must also serve its data directory: the postmaster starts when it
+     * can bind any of its addresses, so another instance's server can still answer on the one connected to. Using it
+     * would run against another cluster, and closing this instance would not stop it.
+     */
+    private void verifyReady() throws SQLException, IOException
     {
         final InetAddress localhost = InetAddress.getLoopbackAddress();
         try (Socket sock = new Socket()) {
@@ -360,9 +407,10 @@ public class EmbeddedPostgres implements Closeable
         } catch (final IOException e) {
             throw new SQLException("connect failed", e);
         }
+        final String served;
         try (Connection c = getPostgresDatabase().getConnection() ;
                 Statement s = c.createStatement() ;
-                ResultSet rs = s.executeQuery("SELECT 1"))
+                ResultSet rs = s.executeQuery("SELECT 1, current_setting('data_directory')"))
         {
             if (!rs.next()) {
                 throw new IllegalStateException("expecting single row");
@@ -370,9 +418,13 @@ public class EmbeddedPostgres implements Closeable
             if (1 != rs.getInt(1)) {
                 throw new IllegalStateException("expecting 1");
             }
+            served = rs.getString(2);
             if (rs.next()) {
                 throw new IllegalStateException("expecting single row");
             }
+        }
+        if (!new File(served).getCanonicalFile().equals(dataDirectory.getCanonicalFile())) {
+            throw new IOException("Port " + port + " is served by another cluster, of data directory " + served + ", not " + dataDirectory);
         }
     }
 
@@ -602,16 +654,16 @@ public class EmbeddedPostgres implements Closeable
         }
 
         public EmbeddedPostgres start() throws IOException {
-            if (builderPort == 0)
-            {
-                builderPort = detectPort();
-            }
             if (builderDataDirectory == null) {
                 builderDataDirectory = Files.createTempDirectory("epg").toFile();
             }
             return new EmbeddedPostgres(parentDirectory, builderDataDirectory, builderCleanDataDirectory, builderRegisterShutdownHook,
                     config, localeConfig, builderPort, connectConfig, pgBinaryResolver, errRedirector, outRedirector,
-                    pgStartupWait, overrideWorkingDirectory, dataDirectoryCustomizer);
+                    pgStartupWait, overrideWorkingDirectory, dataDirectoryCustomizer, this::nextPort);
+        }
+
+        int nextPort() throws IOException {
+            return detectPort();
         }
 
         @Override
@@ -926,5 +978,9 @@ public class EmbeddedPostgres implements Closeable
 
             builder.command(command);
         }
+    }
+
+    interface PortChooser {
+        int choosePort() throws IOException;
     }
 }
