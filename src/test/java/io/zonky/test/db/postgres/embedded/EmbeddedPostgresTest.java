@@ -28,6 +28,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
@@ -82,21 +84,25 @@ public class EmbeddedPostgresTest
     @Test
     public void testDetectedPortTakenBeforeTheServerBindsItStartsOnAnother() throws Exception {
         try (ServerSocket taken = new ServerSocket(0)) {
-            AtomicInteger detections = new AtomicInteger();
+            List<Long> detections = new ArrayList<>();
             EmbeddedPostgres.Builder builder = new EmbeddedPostgres.Builder() {
                 @Override
                 int nextPort() throws IOException {
-                    return detections.getAndIncrement() == 0 ? taken.getLocalPort() : super.nextPort();
+                    detections.add(System.nanoTime());
+                    return detections.size() == 1 ? taken.getLocalPort() : super.nextPort();
                 }
             };
-            try (EmbeddedPostgres pg = builder.setPGStartupWait(Duration.ofSeconds(5)).start();
+            try (EmbeddedPostgres pg = builder.start();
                  Connection connection = pg.getPostgresDatabase().getConnection();
                  Statement statement = connection.createStatement();
                  ResultSet result = statement.executeQuery("SELECT 1")) {
                 assertTrue(result.next());
                 assertEquals(1, result.getInt(1));
                 assertNotEquals(taken.getLocalPort(), pg.getPort());
-                assertEquals(2, detections.get());
+                assertEquals(2, detections.size());
+                // The failed attempt ends when pg_ctl fails, without waiting out the startup wait (10 s by default)
+                Duration failedAttempt = Duration.ofNanos(detections.get(1) - detections.get(0));
+                assertTrue(failedAttempt.compareTo(Duration.ofSeconds(5)) < 0, "the failed attempt took " + failedAttempt);
             }
         }
     }
@@ -112,7 +118,7 @@ public class EmbeddedPostgresTest
                     return detections.getAndIncrement() == 0 ? other.getPort() : super.nextPort();
                 }
             };
-            try (EmbeddedPostgres pg = builder.setPGStartupWait(Duration.ofSeconds(5)).start()) {
+            try (EmbeddedPostgres pg = builder.start()) {
                 assertNotEquals(other.getPort(), pg.getPort());
                 assertEquals(2, detections.get());
                 assertNotEquals(otherDirectory, dataDirectory(pg));
@@ -122,22 +128,21 @@ public class EmbeddedPostgresTest
         }
     }
 
+    @Test
+    public void testAPortAskedForAndTakenFailsWithoutAnotherAttempt() throws Exception {
+        try (ServerSocket taken = new ServerSocket(0)) {
+            assertThrows(IOException.class, () -> EmbeddedPostgres.builder()
+                    .setPort(taken.getLocalPort())
+                    .start());
+        }
+    }
+
     private static String dataDirectory(EmbeddedPostgres pg) throws Exception {
         try (Connection connection = pg.getPostgresDatabase().getConnection();
              Statement statement = connection.createStatement();
              ResultSet result = statement.executeQuery("SHOW data_directory")) {
             assertTrue(result.next());
             return result.getString(1);
-        }
-    }
-
-    @Test
-    public void testAPortAskedForAndTakenFailsWithoutAnotherAttempt() throws Exception {
-        try (ServerSocket taken = new ServerSocket(0)) {
-            assertThrows(IOException.class, () -> EmbeddedPostgres.builder()
-                    .setPort(taken.getLocalPort())
-                    .setPGStartupWait(Duration.ofSeconds(2))
-                    .start());
         }
     }
 }
